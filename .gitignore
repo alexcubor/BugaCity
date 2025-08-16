@@ -1,0 +1,18 @@
+# Environment variables
+.env
+.env.local
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build files
+client/public/bundle.js
+client/public/bundle.js.LICENSE.txt
+
+# Dependencies
+node_modules/
+package-lock.json
