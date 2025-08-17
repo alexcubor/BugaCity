@@ -13,7 +13,8 @@ import {
   MeshUVSpaceRenderer,
   MeshBuilder,
   StandardMaterial,
-  Color3
+  Color3,
+  HDRCubeTexture
 } from '@babylonjs/core';
 import { GLTFFileLoader } from '@babylonjs/loaders';
 import { RewardViewerComponentProps } from './types';
@@ -94,23 +95,20 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       'camera',
       1.5 * Math.PI, // alpha - горизонтальный угол (270°)
       Math.PI / 2,   // beta - вертикальный угол (90°)
-      0.5,           // radius - расстояние от центра (близко)
+      5,             // radius - начинаем издалека
       Vector3.Zero(),
       scene
     );
     camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 0.5; // Разрешаем подойти очень близко
+    camera.lowerRadiusLimit = 0.5;
     camera.upperRadiusLimit = 20;
-    camera.fov = 0.8; // Фокусное расстояние (в радианах)
-    camera.minZ = 0.1; // Минимальная дистанция отсечения (ближняя плоскость)
+    camera.fov = 0.8;
+    camera.minZ = 0.1;
 
-    // Создаем освещение
-    const light = new HemisphericLight(
-      'light',
-      new Vector3(0, 1, 0),
-      scene
-    );
-    light.intensity = 3.2; // Увеличили яркость
+    // Создаем HDR освещение
+    const envTexture = new HDRCubeTexture('/textures/environment/studio.hdr', scene, 512);
+    scene.environmentTexture = envTexture;
+    scene.environmentIntensity = 0.5;
 
     // Настраиваем автовращение
     if (autoRotate) {
@@ -131,9 +129,18 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
         if (meshes.length > 0) {
           const rootMesh = meshes[0];
           if (rootMesh instanceof Mesh) {
+            
             // Масштабируем модель в зависимости от размера
             const scale = size === 'small' ? 0.5 : size === 'large' ? 2 : 1;
-            rootMesh.scaling = new Vector3(scale, scale, scale);
+            rootMesh.scaling = new Vector3(-scale, scale, scale); // Отрицательный X для отражения по горизонтали
+            
+            // Начинаем с ограниченной видимости
+            camera.minZ = 0.1; // Ограничиваем ближнюю видимость
+            camera.maxZ = 2; // Ограничиваем дальнюю видимость
+            
+
+
+
 
             // Ищем дочерний меш для декали
             let targetMesh = rootMesh;
@@ -171,6 +178,52 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
               targetMesh.decalMap.renderTexture(decalTexture, new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(0.3, 0.3, 0.3));
             }
           }
+
+                    // Анимация приближения и вращения камеры
+          const startRadius = 5;
+          const endRadius = 0.5;
+          const startAlpha = camera.alpha;
+          const endAlpha = startAlpha + 2 * Math.PI; // Полный оборот
+          const animationDuration = 1000; // 1 секунда
+          const startTime = Date.now();
+
+          const animateCamera = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+            
+            // Кривая: быстрое начало, плавное замедление в конце
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            // Приближение камеры
+            const currentRadius = startRadius + (endRadius - startRadius) * easeProgress;
+            camera.radius = currentRadius;
+            
+            // Вращение камеры вокруг модели с отскоком в конце
+            let currentAlpha = startAlpha + (endAlpha - startAlpha) * easeProgress;
+            
+            // Добавляем отскок по вращению в последние 20% анимации (после полного приближения)
+            if (progress > 0.8) {
+              const bounceProgress = (progress - 0.8) / 0.2; // 0 до 1 в последние 20%
+              // Один плавный отскок
+              const bounce = Math.sin(bounceProgress * Math.PI) * 0.1 * (1 - bounceProgress);
+              currentAlpha += bounce;
+            }
+            
+            camera.alpha = currentAlpha;
+            
+            // Анимация расширения видимости
+            camera.minZ = 0.01 + (0.1 - 0.01) * (1 - easeProgress); // Расширяем ближнюю видимость
+            camera.maxZ = 10 + (2 - 10) * (1 - easeProgress); // Расширяем дальнюю видимость
+            
+            if (progress < 1) {
+              requestAnimationFrame(animateCamera);
+            }
+          };
+
+
+
+          // Запускаем анимацию камеры через небольшую задержку
+          setTimeout(animateCamera, 500);
         }
         
         if (onLoad) {

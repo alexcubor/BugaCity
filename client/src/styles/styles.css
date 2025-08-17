@@ -102,8 +102,33 @@ p {
   width: 100vw;
   height: 100vh;
   background-color: var(--color-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 10;
+  animation: modalFadeIn 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Убираем рамку фокуса для canvas */
+canvas {
+  outline: none;
+}
+
+canvas:focus {
+  outline: none;
 }
