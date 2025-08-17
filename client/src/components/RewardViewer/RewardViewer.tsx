@@ -7,7 +7,13 @@ import {
   ArcRotateCamera,
   SceneLoader,
   AbstractMesh,
-  Mesh
+  Mesh,
+  Color4,
+  DynamicTexture,
+  MeshUVSpaceRenderer,
+  MeshBuilder,
+  StandardMaterial,
+  Color3
 } from '@babylonjs/core';
 import { GLTFFileLoader } from '@babylonjs/loaders';
 import { RewardViewerComponentProps } from './types';
@@ -19,13 +25,51 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   rewardId,
   size = 'medium',
   autoRotate = true,
-  showControls = false,
   onLoad,
-  onError
+  onError,
+  // Новые пропсы для модального окна
+  isModal = false,
+  onClose,
+  modalTitle,
+  userName
 }) => {
+  // Логика работы с URL для модального окна
+  useEffect(() => {
+    if (isModal && onClose) {
+      const handleUrlChange = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const rewardParam = urlParams.get('reward');
+        if (!rewardParam) {
+          onClose();
+        }
+      };
+
+      window.addEventListener('popstate', handleUrlChange);
+      return () => window.removeEventListener('popstate', handleUrlChange);
+    }
+  }, [isModal, onClose]);
+
+  const handleClose = () => {
+    if (onClose) {
+      // Убираем параметр из URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('reward');
+      window.history.pushState({}, '', url);
+      onClose();
+    }
+  };
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<Scene | null>(null);
   const engineRef = useRef<Engine | null>(null);
+
+  // Если это модальное окно и onClose не передан, не рендерим ничего
+  if (isModal && !onClose) return null;
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -35,21 +79,30 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     const engine = new Engine(canvas, true);
     const scene = new Scene(engine);
     
+    // Устанавливаем прозрачный фон
+    scene.clearColor = new Color4(0, 0, 0, 0);
+    
+    // Принудительно устанавливаем размер canvas
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
     engineRef.current = engine;
     sceneRef.current = scene;
 
     // Создаем камеру
     const camera = new ArcRotateCamera(
       'camera',
-      0,
-      Math.PI / 3,
-      10,
+      1.5 * Math.PI, // alpha - горизонтальный угол (270°)
+      Math.PI / 2,   // beta - вертикальный угол (90°)
+      0.5,           // radius - расстояние от центра (близко)
       Vector3.Zero(),
       scene
     );
     camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 2;
+    camera.lowerRadiusLimit = 0.5; // Разрешаем подойти очень близко
     camera.upperRadiusLimit = 20;
+    camera.fov = 0.8; // Фокусное расстояние (в радианах)
+    camera.minZ = 0.1; // Минимальная дистанция отсечения (ближняя плоскость)
 
     // Создаем освещение
     const light = new HemisphericLight(
@@ -57,7 +110,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       new Vector3(0, 1, 0),
       scene
     );
-    light.intensity = 0.7;
+    light.intensity = 3.2; // Увеличили яркость
 
     // Настраиваем автовращение
     if (autoRotate) {
@@ -81,6 +134,42 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             // Масштабируем модель в зависимости от размера
             const scale = size === 'small' ? 0.5 : size === 'large' ? 2 : 1;
             rootMesh.scaling = new Vector3(scale, scale, scale);
+
+            // Ищем дочерний меш для декали
+            let targetMesh = rootMesh;
+            for (let child of rootMesh.getChildren(undefined, false)) {
+              if (child instanceof Mesh && (child.name === 'shape')) {
+                targetMesh = child;
+                break;
+              }
+            }
+
+            // Создаем текстуру с черным текстом
+            const decalTexture = new DynamicTexture('decalTexture', 512, scene);
+            const textureContext = decalTexture.getContext() as CanvasRenderingContext2D;
+            
+            textureContext.clearRect(0, 0, 512, 512);
+            textureContext.fillStyle = 'black';
+            textureContext.font = 'bold 24px Arial';
+            textureContext.textAlign = 'center';
+            textureContext.textBaseline = 'middle';
+            textureContext.fillText(userName, 256, 256);
+            
+            decalTexture.update();
+
+            // Создаем decalMap и рендерим декаль
+            if (targetMesh.getTotalVertices() > 0 && targetMesh.material) {
+              targetMesh.decalMap = new MeshUVSpaceRenderer(targetMesh, scene, {width: 2048, height: 2048});
+              
+              const material = targetMesh.material as any;
+              if (material.decalMap) {
+                material.decalMap.smoothAlpha = true;
+                material.decalMap.isEnabled = true;
+              }
+
+              // Рендерим статичную декаль
+              targetMesh.decalMap.renderTexture(decalTexture, new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(0.3, 0.3, 0.3));
+            }
           }
         }
         
@@ -122,52 +211,29 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     };
   }, [rewardId, size, autoRotate, onLoad, onError]);
 
-  const getCanvasSize = () => {
-    switch (size) {
-      case 'small':
-        return { width: 100, height: 100 };
-      case 'large':
-        return { width: 400, height: 400 };
-      default: // medium
-        return { width: 200, height: 200 };
-    }
-  };
 
-  const canvasSize = getCanvasSize();
 
-  const handleResetView = () => {
-    if (sceneRef.current) {
-      const camera = sceneRef.current.activeCamera as ArcRotateCamera;
-      if (camera) {
-        camera.alpha = 0;
-        camera.beta = Math.PI / 3;
-        camera.radius = 10;
-      }
-    }
-  };
-
-  const handleToggleRotation = () => {
-    if (sceneRef.current) {
-      const camera = sceneRef.current.activeCamera as ArcRotateCamera;
-      if (camera) {
-        (camera as any).autoRotate = !(camera as any).autoRotate;
-      }
-    }
-  };
-
-  return (
-    <div>
-      <canvas
-        ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
-      />
-      {showControls && (
+  // Если это модальное окно, рендерим с модальной оберткой
+  if (isModal) {
+    return (
+      <div className="modal-overlay" onClick={handleBackdropClick}>
         <div>
-          <button onClick={handleResetView}>Reset View</button>
-          <button onClick={handleToggleRotation}>Toggle Rotation</button>
+          <button className="modal-close" onClick={handleClose}>
+            ✕
+          </button>
+          <h2>{modalTitle || `Награда: ${rewardId}`}</h2>
+          <div className="modal-canvas-container">
+            <canvas ref={canvasRef} />
+          </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  // Обычный рендер без модального окна
+  return (
+    <div data-size={size}>
+      <canvas ref={canvasRef} />
     </div>
   );
 };

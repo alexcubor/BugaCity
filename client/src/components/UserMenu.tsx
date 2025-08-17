@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import RewardViewer from './RewardViewer';
+import './UserMenu.css';
+import './RewardViewer/RewardViewer.css';
 
 interface UserMenuProps {
   onLogout: () => void;
@@ -25,6 +27,33 @@ function UserMenu({ onLogout }: UserMenuProps) {
       loadUserData();
     }
   }, [isOpen]);
+
+  // Проверяем URL при загрузке страницы
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const rewardParam = urlParams.get('reward');
+    if (rewardParam) {
+      setSelectedReward(rewardParam);
+      // Загружаем данные пользователя, если есть параметр reward
+      loadUserData();
+    }
+  }, []);
+
+  // Обработчик кнопки "Назад" в браузере
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const rewardParam = urlParams.get('reward');
+      if (!rewardParam) {
+        setSelectedReward(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+
 
   const loadUserData = async () => {
     try {
@@ -59,11 +88,21 @@ function UserMenu({ onLogout }: UserMenuProps) {
   };
 
   const handleRewardClick = (reward: string) => {
+    console.log('User data:', user);
+    console.log('User name:', user?.name);
     setSelectedReward(reward);
+    // Обновляем URL
+    const url = new URL(window.location.href);
+    url.searchParams.set('reward', reward);
+    window.history.pushState({}, '', url);
   };
 
   const closeModal = () => {
     setSelectedReward(null);
+    // Убираем параметр из URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('reward');
+    window.history.pushState({}, '', url);
   };
 
   const handleModalBackdropClick = (e: React.MouseEvent) => {
@@ -76,18 +115,16 @@ function UserMenu({ onLogout }: UserMenuProps) {
     <div>
       {/* Кнопка с аватаром */}
       <button onClick={toggleMenu}>
-        <div>
-          <span>👤</span> {/* Заглушка для аватара */}
-          <span>{user?.name || 'Пользователь'}</span>
-        </div>
+        <span>👤</span>
+        <span>{user?.name || 'Пользователь'}</span>
       </button>
 
       {/* Выпадающее меню */}
       {isOpen && (
-        <div>
+        <div className="widget">
           {/* Контейнер с наградами */}
           <div>
-            <h4>Мои награды:</h4>
+            <h2>Мои награды:</h2>
             <div>
               {loading ? (
                 <span>Загрузка...</span>
@@ -102,7 +139,6 @@ function UserMenu({ onLogout }: UserMenuProps) {
                       src={`/models/rewards/${reward}/${reward}.png`}
                       alt={reward}
                       onError={(e) => {
-                        // Fallback если изображение не найдено
                         e.currentTarget.style.display = 'none';
                       }}
                     />
@@ -126,23 +162,18 @@ function UserMenu({ onLogout }: UserMenuProps) {
       )}
 
       {/* Модальное окно с 3D Viewer */}
-      {selectedReward && (
-        <div onClick={handleModalBackdropClick}>
-          <div>
-            <button onClick={closeModal}>
-              ✕
-            </button>
-            <h3>Награда: {selectedReward}</h3>
-            <RewardViewer 
-              rewardId={selectedReward} 
-              size="large" 
-              autoRotate={true}
-              showControls={true}
-              onLoad={() => {}}
-              onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
-            />
-          </div>
-        </div>
+      {selectedReward && user?.name && (
+        <RewardViewer
+          rewardId={selectedReward}
+          size="large"
+          autoRotate={true}
+          isModal={true}
+          onClose={closeModal}
+          modalTitle={`Награда: ${selectedReward}`}
+          userName={user.name}
+          onLoad={() => {}}
+          onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
+        />
       )}
     </div>
   );

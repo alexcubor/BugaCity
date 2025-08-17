@@ -16,3 +16,6 @@ client/public/bundle.js.LICENSE.txt
 # Dependencies
 node_modules/
 package-lock.json
+
+# Images and assets
+client/public/*.png
