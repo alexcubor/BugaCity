@@ -15,7 +15,7 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"reward",
+			"name":"shape",
 			"rotation":[
 				0.7071068286895752,
 				0,
@@ -53,7 +53,7 @@
 	],
 	"meshes":[
 		{
-			"name":"Curve.001",
+			"name":"shape",
 			"primitives":[
 				{
 					"attributes":{

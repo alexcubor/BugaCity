@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import UserMenu from './components/UserMenu';
+import SceneEditor from './admin/SceneEditor';
 import './styles/styles.css';
 
 // Компонент главной страницы
@@ -134,6 +135,10 @@ function App() {
   
   if (path === '/login') {
     return <LoginPage />;
+  }
+  
+  if (path === '/admin/scene') {
+    return <SceneEditor />;
   }
   
   return <HomePage />;

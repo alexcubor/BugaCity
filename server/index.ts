@@ -2,6 +2,7 @@ import express from 'express';
 import { MongoClient } from 'mongodb';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 
@@ -37,6 +38,27 @@ app.get('/', (req, res) => {
 // Страница входа
 app.get('/login', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'client/public/index.html'));
+});
+
+// Админ-панель
+app.get('/admin/scene', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'client/public/index.html'));
+});
+
+// API для получения списка HDR файлов
+app.get('/api/hdri-files', (req, res) => {
+  try {
+    const hdriPath = path.join(process.cwd(), 'client/public/textures/environment');
+    
+    const files = fs.readdirSync(hdriPath);
+    const hdrFiles = files.filter(file => file.toLowerCase().endsWith('.hdr'));
+    
+    console.log('Найдены HDR файлы:', hdrFiles);
+    res.json(hdrFiles);
+  } catch (error) {
+    console.error('Ошибка при сканировании HDRI файлов:', error);
+    res.status(500).json({ error: 'Ошибка при сканировании файлов' });
+  }
 });
 
 app.listen(PORT, () => {

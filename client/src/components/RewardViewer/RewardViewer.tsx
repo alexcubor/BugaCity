@@ -15,7 +15,8 @@ import {
   StandardMaterial,
   Color3,
   HDRCubeTexture,
-  Texture
+  Texture,
+  TransformNode
 } from '@babylonjs/core';
 import { GLTFFileLoader } from '@babylonjs/loaders';
 import { RewardViewerComponentProps } from './types';
@@ -109,7 +110,13 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     // Создаем HDR освещение
     const envTexture = new HDRCubeTexture('/textures/environment/studio.hdr', scene, 512);
     scene.environmentTexture = envTexture;
-    scene.environmentIntensity = 0.5;
+    scene.environmentIntensity = 1.0;
+
+    // Применяем настройки постобработки из SceneEditor
+    scene.imageProcessingConfiguration!.exposure = 0.5;
+    scene.imageProcessingConfiguration!.contrast = 2.2;
+    scene.imageProcessingConfiguration!.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration!.toneMappingType = 0;
 
     // Настраиваем автовращение
     if (autoRotate) {
@@ -153,36 +160,46 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             }
 
             // Создаем комбинированную текстуру с настоящим SVG и именем пользователя
-            const combinedTexture = new DynamicTexture('combinedTexture', 1024, scene);
+            const combinedTexture = new DynamicTexture('combinedTexture', 2048, scene);
             const textureContext = combinedTexture.getContext() as CanvasRenderingContext2D;
             
+            // Настройки для лучшего качества рендеринга
+            textureContext.imageSmoothingEnabled = true;
+            textureContext.imageSmoothingQuality = 'high';
+            
             // Прозрачный фон
-            textureContext.clearRect(0, 0, 1024, 1024);
+            textureContext.clearRect(0, 0, 2048, 2048);
             
             
-            // Загружаем SVG изображение
-            const svgImage = new Image();
-            svgImage.onload = () => {
-              // Рисуем SVG
-              const svgWidth = 288;
-              const svgHeight = 98;
-              const centerX = (1024 - svgWidth) / 2; // Центрируем по горизонтали
-              textureContext.drawImage(svgImage, centerX, 500, svgWidth, svgHeight);
-              
-              // Добавляем имя пользователя снизу
-              textureContext.fillStyle = '#251C1C';
-              textureContext.font = 'bold 48px "DIN Condensed", Arial';
-              textureContext.textAlign = 'center';
-              textureContext.textBaseline = 'middle';
-              textureContext.fillText(userName.toUpperCase(), 512, 650);
-              
-              combinedTexture.update();
-            };
-            svgImage.src = '/models/rewards/pioneer/decal.svg';
+            // Сохраняем текущее состояние контекста
+            textureContext.save();
+            
+            // Перемещаем в правый нижний угол и поворачиваем на 30 градусов
+            textureContext.translate(1130, 1250); // Смещаем в правый нижний угол (увеличенные координаты для 2048x2048)
+            textureContext.rotate(-30 * Math.PI / 180); // -30 градусов (по часовой стрелке)
+            
+            // Рисуем имя пользователя сверху
+            textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
+            textureContext.font = '400 98px "Dancing Script", "Marck Script", "Brush Script MT", cursive';
+            textureContext.textAlign = 'center';
+            textureContext.textBaseline = 'middle';
+            textureContext.fillText(userName.toUpperCase(), 0, -50);
+            
+            textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
+            textureContext.font = '400 72px "Dancing Script", "Marck Script", "Brush Script MT", cursive';
+            textureContext.textAlign = 'center';
+            textureContext.textBaseline = 'middle';
+            textureContext.fillText('· Среди первых ·', 0, 50);
+            
+            // Восстанавливаем состояние контекста
+            textureContext.restore();
+            
+            // Обновляем текстуру
+            combinedTexture.update();
 
             // Создаем decalMap и рендерим декаль
             if (targetMesh.getTotalVertices() > 0 && targetMesh.material) {
-              targetMesh.decalMap = new MeshUVSpaceRenderer(targetMesh, scene, {width: 2048, height: 2048});
+              targetMesh.decalMap = new MeshUVSpaceRenderer(targetMesh, scene, {width: 4096, height: 4096});
               
               const material = targetMesh.material as any;
               if (material.decalMap) {
@@ -193,9 +210,29 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
               // Рендерим комбинированную декаль
               targetMesh.decalMap.renderTexture(combinedTexture, new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(0.4, 0.4, 0.4));
             }
+            
+            // Создаем родительский объект для автоматического вращения
+            const cameraParent = new TransformNode('cameraParent', scene);
+            cameraParent.position = Vector3.Zero();
+            
+            // Прикрепляем камеру к родителю
+            camera.parent = cameraParent;
+            
+            // Автоматическое вращение родительского объекта
+            const rotationSpeed = 0.0001; // Медленное вращение
+            let rotationAngle = 0;
+            
+            const animateParentRotation = () => {
+              rotationAngle += rotationSpeed;
+              cameraParent.rotation.y = rotationAngle;
+              requestAnimationFrame(animateParentRotation);
+            };
+            
+            // Запускаем анимацию вращения родителя
+            animateParentRotation();
           }
 
-                    // Анимация приближения и вращения камеры
+          // Анимация приближения и вращения камеры
           const startRadius = 5;
           const endRadius = 0.5;
           const startAlpha = camera.alpha;
