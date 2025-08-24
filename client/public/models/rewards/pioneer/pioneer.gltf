@@ -15,7 +15,7 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"shape",
+			"name":"reward",
 			"rotation":[
 				0.7071068286895752,
 				0,
@@ -102,7 +102,7 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":646,
+			"count":645,
 			"max":[
 				0.012469234876334667,
 				0.00012582214549183846,
@@ -118,45 +118,45 @@
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":646,
+			"count":645,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":646,
+			"count":645,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5123,
-			"count":2040,
+			"count":2034,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":7752,
+			"byteLength":7740,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":7752,
-			"byteOffset":7752,
+			"byteLength":7740,
+			"byteOffset":7740,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":5168,
-			"byteOffset":15504,
+			"byteLength":5160,
+			"byteOffset":15480,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":4080,
-			"byteOffset":20672,
+			"byteLength":4068,
+			"byteOffset":20640,
 			"target":34963
 		}
 	],
@@ -168,7 +168,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":24752,
+			"byteLength":24708,
 			"uri":"pioneer.bin"
 		}
 	]

@@ -14,7 +14,8 @@ import {
   MeshBuilder,
   StandardMaterial,
   Color3,
-  HDRCubeTexture
+  HDRCubeTexture,
+  Texture
 } from '@babylonjs/core';
 import { GLTFFileLoader } from '@babylonjs/loaders';
 import { RewardViewerComponentProps } from './types';
@@ -151,18 +152,33 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
               }
             }
 
-            // Создаем текстуру с черным текстом
-            const decalTexture = new DynamicTexture('decalTexture', 512, scene);
-            const textureContext = decalTexture.getContext() as CanvasRenderingContext2D;
+            // Создаем комбинированную текстуру с настоящим SVG и именем пользователя
+            const combinedTexture = new DynamicTexture('combinedTexture', 1024, scene);
+            const textureContext = combinedTexture.getContext() as CanvasRenderingContext2D;
             
-            textureContext.clearRect(0, 0, 512, 512);
-            textureContext.fillStyle = 'black';
-            textureContext.font = 'bold 24px Arial';
-            textureContext.textAlign = 'center';
-            textureContext.textBaseline = 'middle';
-            textureContext.fillText(userName, 256, 256);
+            // Прозрачный фон
+            textureContext.clearRect(0, 0, 1024, 1024);
             
-            decalTexture.update();
+            
+            // Загружаем SVG изображение
+            const svgImage = new Image();
+            svgImage.onload = () => {
+              // Рисуем SVG
+              const svgWidth = 288;
+              const svgHeight = 98;
+              const centerX = (1024 - svgWidth) / 2; // Центрируем по горизонтали
+              textureContext.drawImage(svgImage, centerX, 500, svgWidth, svgHeight);
+              
+              // Добавляем имя пользователя снизу
+              textureContext.fillStyle = '#251C1C';
+              textureContext.font = 'bold 48px "DIN Condensed", Arial';
+              textureContext.textAlign = 'center';
+              textureContext.textBaseline = 'middle';
+              textureContext.fillText(userName.toUpperCase(), 512, 650);
+              
+              combinedTexture.update();
+            };
+            svgImage.src = '/models/rewards/pioneer/decal.svg';
 
             // Создаем decalMap и рендерим декаль
             if (targetMesh.getTotalVertices() > 0 && targetMesh.material) {
@@ -174,8 +190,8 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
                 material.decalMap.isEnabled = true;
               }
 
-              // Рендерим статичную декаль
-              targetMesh.decalMap.renderTexture(decalTexture, new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(0.3, 0.3, 0.3));
+              // Рендерим комбинированную декаль
+              targetMesh.decalMap.renderTexture(combinedTexture, new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(0.4, 0.4, 0.4));
             }
           }
 
@@ -202,12 +218,12 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             let currentAlpha = startAlpha + (endAlpha - startAlpha) * easeProgress;
             
             // Добавляем отскок по вращению в последние 20% анимации (после полного приближения)
-            if (progress > 0.8) {
-              const bounceProgress = (progress - 0.8) / 0.2; // 0 до 1 в последние 20%
-              // Один плавный отскок
-              const bounce = Math.sin(bounceProgress * Math.PI) * 0.1 * (1 - bounceProgress);
-              currentAlpha += bounce;
-            }
+            // if (progress > 0.8) {
+            //   const bounceProgress = (progress - 0.8) / 0.2; // 0 до 1 в последние 20%
+            //   // Один плавный отскок
+            //   const bounce = Math.sin(bounceProgress * Math.PI) * 0.1 * (1 - bounceProgress);
+            //   currentAlpha += bounce;
+            // }
             
             camera.alpha = currentAlpha;
             
