@@ -22,11 +22,11 @@ function UserMenu({ onLogout }: UserMenuProps) {
   const [selectedReward, setSelectedReward] = useState<string | null>(null);
 
   useEffect(() => {
-    // Загружаем данные пользователя при открытии меню
-    if (isOpen && !user) {
+    // Загружаем данные пользователя сразу при монтировании компонента
+    if (!user) {
       loadUserData();
     }
-  }, [isOpen]);
+  }, []);
 
   // Проверяем URL при загрузке страницы
   useEffect(() => {
@@ -112,7 +112,7 @@ function UserMenu({ onLogout }: UserMenuProps) {
   };
 
   return (
-    <div>
+    <div className="user-menu">
       {/* Кнопка с аватаром */}
       <button onClick={toggleMenu}>
         <span>👤</span>
@@ -124,7 +124,6 @@ function UserMenu({ onLogout }: UserMenuProps) {
         <div className="widget">
           {/* Контейнер с наградами */}
           <div>
-            <h2>Мои награды:</h2>
             <div>
               {loading ? (
                 <span>Загрузка...</span>
@@ -151,13 +150,11 @@ function UserMenu({ onLogout }: UserMenuProps) {
           </div>
 
           {/* Меню действий */}
-          <ul>
-            <li>
+            <div>
               <button onClick={handleLogout}>
                 Выйти
               </button>
-            </li>
-          </ul>
+            </div>
         </div>
       )}
 

@@ -1,0 +1,43 @@
+.user-menu {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 21;
+}
+
+.widget {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--color-surface-dark);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 22;
+  margin-top: 8px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.widget > div {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.widget img {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.widget img:hover {
+  transform: scale(1.1);
+}
+
