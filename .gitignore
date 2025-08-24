@@ -19,3 +19,4 @@ package-lock.json
 
 # Images and assets
 client/public/*.png
+client/public/*.svg

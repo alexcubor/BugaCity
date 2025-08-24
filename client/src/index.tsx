@@ -1,52 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import UserMenu from './components/UserMenu';
+import HomePage from './components/HomePage';
 import SceneEditor from './admin/SceneEditor';
-import './styles/styles.css';
+import './styles.css';
 
-// Компонент главной страницы
-function HomePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    // Проверяем, есть ли токен в localStorage
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
-    
-    // Устанавливаем фоновое изображение
-    const backgroundElement = document.querySelector('.background-image') as HTMLElement;
-    if (backgroundElement) {
-      backgroundElement.style.backgroundImage = "url('/images/glukograd_concept.png')";
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsLoggedIn(false);
-    window.location.reload(); // Перезагружаем страницу
-  };
-
-  return (
-    <div>
-      {/* Фоновое изображение */}
-      <div className="background-image"></div>
-      
-      <div>
-        <h1>Добро пожаловать в BugaCity!</h1>
-        <p>Это главная страница проекта</p>
-        
-        {isLoggedIn ? (
-          <div>
-            <p>Вы авторизованы!</p>
-            <UserMenu onLogout={handleLogout} />
-          </div>
-        ) : (
-          <a href="/login">Войти в систему</a>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // Компонент страницы входа
 function LoginPage() {
