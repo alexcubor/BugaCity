@@ -2,7 +2,7 @@
   "name": "glukograd",
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"dotenv -e .env.dev nodemon server/index.ts\" \"webpack --mode development --watch\"",
+    "dev": "concurrently \"dotenv -e .env.dev nodemon server/index.ts\" \"dotenv -e .env.dev webpack --mode development --watch\"",
     "start": "dotenv -e .env ts-node server/index.ts",
     "build": "webpack --mode production",
     "clean": "rm -rf node_modules dist"

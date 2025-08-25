@@ -1,5 +1,7 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
+const dotenv = require('dotenv');
 
 module.exports = {
   entry: './client/src/index.tsx',
@@ -38,6 +40,12 @@ module.exports = {
           to: 'images'
         }
       ]
+    }),
+    new webpack.DefinePlugin({
+      'process.env': JSON.stringify({
+        ...dotenv.config({ path: '.env.dev' }).parsed,
+        NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development')
+      })
     })
   ],
   devServer: {

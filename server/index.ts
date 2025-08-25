@@ -3,8 +3,12 @@ import { MongoClient } from 'mongodb';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
+
+// Загружаем переменные окружения
+dotenv.config({ path: '.env.dev' });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,6 +16,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), 'client/public')));
+
+
 
 // MongoDB подключение
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/social_network';
@@ -53,10 +59,8 @@ app.get('/api/hdri-files', (req, res) => {
     const files = fs.readdirSync(hdriPath);
     const hdrFiles = files.filter(file => file.toLowerCase().endsWith('.hdr'));
     
-    console.log('Найдены HDR файлы:', hdrFiles);
     res.json(hdrFiles);
   } catch (error) {
-    console.error('Ошибка при сканировании HDRI файлов:', error);
     res.status(500).json({ error: 'Ошибка при сканировании файлов' });
   }
 });

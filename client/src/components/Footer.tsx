@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
         <div className="footer-item">
           <p>На базе технологий</p>
           <div>
-            <a href="#">веб-AR движка</a>
+            <a href="https://github.com/alexcubor/Yadviga-SLAM">веб-AR движка</a>
           </div>
         </div>
         <div>
