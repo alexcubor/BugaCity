@@ -6,7 +6,7 @@
   --color-secondary: #6c757d;
   
   /* Фоновые цвета */
-  --color-background: #1b1b1e;
+  --color-background: #0b0a07;
   --color-surface: #ffffff;
   --color-surface-dark: #0c0c0c;
   
@@ -32,6 +32,7 @@
 
 body {
   background-color: var(--color-background);
+  margin: 0;
 }
 
 /* Кнопки */
@@ -58,6 +59,7 @@ h1 {
   font-weight: 600;
   margin-bottom: 16px;
   color: var(--color-text-primary);
+  text-align: center;
 }
 
 h2 {
