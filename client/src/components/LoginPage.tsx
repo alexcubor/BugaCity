@@ -125,7 +125,7 @@ const LoginPage: React.FC = () => {
     }
     
     const url = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const data = isLogin ? { email, password } : { email, password, name, verificationCode };
+    const data = isLogin ? { email, password } : { email, password, verificationCode };
     
     try {
       const response = await fetch(url, {
@@ -262,6 +262,7 @@ const LoginPage: React.FC = () => {
                     disabled
                   />
                 </div>
+
                 <div className="form-field slide-in">
                   <label>Confirm Password:</label>
                   <input

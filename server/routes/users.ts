@@ -1,5 +1,6 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -57,6 +58,65 @@ router.get('/:userId', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Ошибка при получении пользователя' });
+  }
+});
+
+// Обновить данные пользователя
+router.post('/:userId/update-name', async (req, res) => {
+  console.log('PUT /:userId вызван с параметрами:', req.params);
+  console.log('Тело запроса:', req.body);
+  
+  try {
+    const db = req.app.locals.db;
+    if (!db) {
+      console.error('Database not connected');
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+
+    const { userId } = req.params;
+    const { name } = req.body;
+    
+    console.log('userId:', userId);
+    console.log('name:', name);
+    
+    if (!name || name.trim() === '') {
+      console.error('Имя пустое');
+      return res.status(400).json({ error: 'Имя не может быть пустым' });
+    }
+
+    // Проверяем, является ли userId ObjectId или email
+    let updateResult;
+    if (ObjectId.isValid(userId)) {
+      console.log('Используем ObjectId формат');
+      // ObjectId формат
+      updateResult = await db.collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { name: name.trim() } }
+      );
+    } else {
+      console.log('Используем email формат');
+      // Email формат
+      updateResult = await db.collection('users').updateOne(
+        { email: userId },
+        { $set: { name: name.trim() } }
+      );
+    }
+    
+    console.log('Результат обновления:', updateResult);
+    
+    if (updateResult.matchedCount === 0) {
+      console.error('Пользователь не найден');
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    console.log('Имя успешно обновлено');
+    res.json({ 
+      message: 'Имя пользователя обновлено',
+      name: name.trim()
+    });
+  } catch (error) {
+    console.error('Ошибка при обновлении пользователя:', error);
+    res.status(500).json({ error: 'Ошибка при обновлении пользователя' });
   }
 });
 

@@ -13,7 +13,12 @@ class AuthController {
 
   // Отправка кода подтверждения через SMTP сервер
   private async sendVerificationEmail(email: string, code: string): Promise<void> {
-    await emailService.sendVerificationEmail(email, code);
+    try {
+      await emailService.sendVerificationEmail(email, code);
+    } catch (error) {
+      console.error('❌ Ошибка в sendVerificationEmail:', error);
+      // Не выбрасываем ошибку, чтобы сервер не крашился
+    }
   }
 
   async sendVerificationCode(req: any, res: any) {
@@ -41,10 +46,14 @@ class AuthController {
     // Сохраняем код
     authController.emailVerificationCodes.set(email, { code, expires });
 
-    // Отправляем код
-    authController.sendVerificationEmail(email, code);
-
-    res.json({ message: 'Код подтверждения отправлен на ваш email' });
+    try {
+      // Отправляем код
+      await authController.sendVerificationEmail(email, code);
+      res.json({ message: 'Код подтверждения отправлен на ваш email' });
+    } catch (error) {
+      console.error('❌ Ошибка отправки email:', error);
+      res.status(500).json({ error: 'Ошибка отправки кода подтверждения. Попробуйте позже.' });
+    }
   }
 
   async register(req: any, res: any) {
@@ -79,7 +88,7 @@ class AuthController {
       const userData: any = {
         email,
         password: hashedPassword,
-        name: name || email.split('@')[0], // Используем часть email как имя по умолчанию
+        name: name || '', // Оставляем пустым, если имя не передано
         glukocoins: 0,
         rewards: []
       };
