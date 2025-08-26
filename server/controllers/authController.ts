@@ -4,16 +4,16 @@ import jwt from 'jsonwebtoken';
 class AuthController {
   async register(req: any, res: any) {
     try {
-      const { username, password, name, email } = req.body;
+      const { email, password, name } = req.body;
       const db = req.app.locals.db;
       
       if (!db) {
         return res.status(500).json({ error: 'Database not connected' });
       }
       
-      const existingUser = await db.collection('users').findOne({ username });
+      const existingUser = await db.collection('users').findOne({ email });
       if (existingUser) {
-        return res.status(400).json({ error: 'Пользователь уже существует' });
+        return res.status(400).json({ error: 'Пользователь с такой почтой уже существует' });
       }
 
       // Проверяем количество пользователей с наградой Pioneer
@@ -23,10 +23,9 @@ class AuthController {
        
       const hashedPassword = await bcrypt.hash(password, 12);
       const userData: any = {
-        username,
+        email,
         password: hashedPassword,
-        name,
-        email: email || `${username}@example.com`, // Generate email if not provided
+        name: name || email.split('@')[0], // Используем часть email как имя по умолчанию
         glukocoins: 0,
         rewards: []
       };
@@ -53,14 +52,14 @@ class AuthController {
 
   async login(req: any, res: any) {
     try {
-      const { username, password } = req.body;
+      const { email, password } = req.body;
       const db = req.app.locals.db;
       
       if (!db) {
         return res.status(500).json({ error: 'Database not connected' });
       }
       
-      const user = await db.collection('users').findOne({ username });
+      const user = await db.collection('users').findOne({ email });
       if (!user) {
         return res.status(400).json({ error: 'Неверные данные' });
       }
@@ -76,10 +75,6 @@ class AuthController {
       res.status(500).json({ error: 'Ошибка входа' });
     }
   }
-
-
-
-
 
   private async exchangeVKCode(code: string, host?: string) {
     // Обмен кода на токен ВКонтакте
@@ -100,6 +95,10 @@ class AuthController {
     
     const data = await response.json();
     
+    if (data.error) {
+      throw new Error(`VK OAuth error: ${data.error_description || data.error}`);
+    }
+    
     // Получаем информацию о пользователе
     const userResponse = await fetch(`https://api.vk.com/method/users.get?user_ids=${data.user_id}&fields=email&access_token=${data.access_token}&v=5.131`);
     const userData = await userResponse.json();
@@ -117,55 +116,54 @@ class AuthController {
       ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
       : 'https://gluko.city/api/auth/callback';
       
-      const response = await fetch('https://oauth.yandex.ru/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          client_id: process.env.YANDEX_CLIENT_ID || '',
-          client_secret: process.env.YANDEX_CLIENT_SECRET || '',
-          redirect_uri: redirectUri
-        })
-      });
+    const response = await fetch('https://oauth.yandex.ru/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        client_id: process.env.YANDEX_CLIENT_ID || '',
+        client_secret: process.env.YANDEX_CLIENT_SECRET || '',
+        redirect_uri: redirectUri
+      })
+    });
     
-          const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(`Yandex OAuth error: ${data.error_description || data.error}`);
-      }
-      
-      // Получаем информацию о пользователе
-      const userResponse = await fetch('https://login.yandex.ru/info', {
-        headers: { 'Authorization': `OAuth ${data.access_token}` }
-      });
-      const userData = await userResponse.json();
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(`Yandex OAuth error: ${data.error_description || data.error}`);
+    }
+    
+    // Получаем информацию о пользователе
+    const userResponse = await fetch('https://login.yandex.ru/info', {
+      headers: { 'Authorization': `OAuth ${data.access_token}` }
+    });
+    const userData = await userResponse.json();
     
     return {
       id: userData.id,
-      name: userData.real_name || userData.display_name,
-      email: userData.default_email
+      name: userData.real_name || userData.display_name || userData.login,
+      email: userData.default_email,
+      login: userData.login
     };
   }
-
-
 
   async handleVKCallback(req: any, res: any) {
     try {
       const { accessToken, userData, action } = req.body;
 
       const db = req.app.locals.db;
+      
+      // Ищем пользователя только по email
       let user = await db.collection('users').findOne({
-        vkId: userData.id
+        email: userData.email
       });
 
       if (!user) {
         // Автоматически регистрируем пользователя, если его нет в базе
         const result = await db.collection('users').insertOne({
-          username: userData.email || `vk_${userData.id}`,
           name: userData.first_name + ' ' + userData.last_name,
           email: userData.email,
-          vkId: userData.id,
           glukocoins: 0,
           rewards: []
         });
@@ -174,6 +172,7 @@ class AuthController {
       }
 
       const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
+      
       res.json({ token, user });
     } catch (error) {
       res.status(500).json({ error: 'Ошибка сервера' });
@@ -200,21 +199,20 @@ class AuthController {
         const userData = await authController.exchangeYandexCode(code, req.headers.host);
         
         const db = req.app.locals.db;
-              if (!db) {
-        throw new Error('Database connection failed');
-      }
+        if (!db) {
+          throw new Error('Database connection failed');
+        }
         
+        // Ищем пользователя только по email
         let user = await db.collection('users').findOne({
-          yandexId: userData.id
+          email: userData.email
         });
 
         if (!user) {
           // Автоматически регистрируем пользователя
           const result = await db.collection('users').insertOne({
-            username: userData.email || `yandex_${userData.id}`,
             name: userData.name,
             email: userData.email,
-            yandexId: userData.id,
             glukocoins: 0,
             rewards: []
           });
@@ -226,6 +224,7 @@ class AuthController {
         
         // Возвращаем HTML страницу, которая отправит сообщение в родительское окно
         const origin = req.headers.origin || 'https://gluko-city.ru.tuna.am';
+        
         res.send(`
           <html>
             <body>

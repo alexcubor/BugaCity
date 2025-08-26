@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     const users = await db.collection('users').find({}).toArray();
     res.json({ users: users.map((user: any) => ({
       id: user._id,
-      username: user.username,
+      email: user.email,
       name: user.name,
       glukocoins: user.glukocoins,
       rewards: user.rewards
@@ -34,19 +34,23 @@ router.get('/:userId', async (req, res) => {
 
     const { userId } = req.params;
     
-    // Проверяем, что userId является валидным ObjectId
-    if (!ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: 'Неверный ID пользователя' });
+    // Проверяем, является ли userId ObjectId или email
+    let user;
+    if (ObjectId.isValid(userId)) {
+      // ObjectId формат
+      user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    } else {
+      // Email формат
+      user = await db.collection('users').findOne({ email: userId });
     }
-
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
     res.json({
       id: user._id,
-      username: user.username,
+      email: user.email,
       name: user.name,
       glukocoins: user.glukocoins,
       rewards: user.rewards || []
@@ -57,17 +61,17 @@ router.get('/:userId', async (req, res) => {
 });
 
 // Добавить награды пользователю
-router.post('/:username/add-rewards', async (req, res) => {
+router.post('/:email/add-rewards', async (req, res) => {
   try {
     const db = req.app.locals.db;
     if (!db) {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    const { username } = req.params;
+    const { email } = req.params;
     const { rewards } = req.body;
 
-    const user = await db.collection('users').findOne({ username });
+    const user = await db.collection('users').findOne({ email });
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
@@ -76,7 +80,7 @@ router.post('/:username/add-rewards', async (req, res) => {
     const updatedRewards = [...(user.rewards || []), ...rewards];
 
     await db.collection('users').updateOne(
-      { username },
+      { email },
       { $set: { rewards: updatedRewards } }
     );
 

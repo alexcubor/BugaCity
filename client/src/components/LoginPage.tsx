@@ -4,23 +4,28 @@ import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [name, setName] = useState('');
 
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(e.target.value);
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  };
+
   const handleNextStep = () => {
-    if (username && !showPassword && !isAnimating) {
+    if (email && !showPassword && !isAnimating) {
       setIsAnimating(true);
       setTimeout(() => {
         setShowPassword(true);
@@ -39,7 +44,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
-    const handleSocialSuccess = (data: any) => {
+  const handleSocialSuccess = (data: any) => {
     // Обработка успешной авторизации через социальные сети
     console.log('Social login success:', data);
   };
@@ -59,7 +64,7 @@ const LoginPage: React.FC = () => {
     }
     
     const url = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const data = isLogin ? { username, password } : { username, password };
+    const data = isLogin ? { email, password } : { email, password, name };
     
     try {
       const response = await fetch(url, {
@@ -71,6 +76,12 @@ const LoginPage: React.FC = () => {
       const result = await response.json();
       if (result.token) {
         localStorage.setItem('token', result.token);
+        localStorage.setItem('userId', result.userId);
+        
+        if (result.isPioneer) {
+          alert(`🎉 Поздравляем! Вы стали Pioneer #${result.pioneerNumber}!`);
+        }
+        
         window.location.href = '/'; // Возвращаемся на главную
       } else {
         alert(result.error);
@@ -89,22 +100,22 @@ const LoginPage: React.FC = () => {
           <div className="form-fields-container">
             {!showPassword ? (
               <div className="form-field">
-                <label>Username:</label>
+                <label>Email:</label>
                 <input
-                  type="text"
-                  value={username}
-                  onChange={handleUsernameChange}
+                  type="email"
+                  value={email}
+                  onChange={handleEmailChange}
                   required
                 />
               </div>
             ) : !showConfirmPassword ? (
               <>
                 <div className="form-field slide-out">
-                  <label>Username:</label>
+                  <label>Email:</label>
                   <input
-                    type="text"
-                    value={username}
-                    onChange={handleUsernameChange}
+                    type="email"
+                    value={email}
+                    onChange={handleEmailChange}
                     required
                     disabled
                   />
@@ -122,11 +133,11 @@ const LoginPage: React.FC = () => {
             ) : (
               <>
                 <div className="form-field slide-out">
-                  <label>Username:</label>
+                  <label>Email:</label>
                   <input
-                    type="text"
-                    value={username}
-                    onChange={handleUsernameChange}
+                    type="email"
+                    value={email}
+                    onChange={handleEmailChange}
                     required
                     disabled
                   />
@@ -158,7 +169,7 @@ const LoginPage: React.FC = () => {
             <button 
               type="button" 
               onClick={handleNextStep}
-              disabled={!username}
+              disabled={!email}
             >
               Далее
             </button>
