@@ -1,15 +1,69 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { emailService } from '../emailService';
 
 class AuthController {
+  // Хранилище временных кодов подтверждения (в продакшене лучше использовать Redis)
+  private emailVerificationCodes = new Map<string, { code: string, expires: number }>();
+
+  // Генерация случайного кода
+  private generateVerificationCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  // Отправка кода подтверждения через SMTP сервер
+  private async sendVerificationEmail(email: string, code: string): Promise<void> {
+    await emailService.sendVerificationEmail(email, code);
+  }
+
+  async sendVerificationCode(req: any, res: any) {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email обязателен' });
+    }
+
+    const db = req.app.locals.db;
+    if (!db) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+
+    // Проверяем, не зарегистрирован ли уже пользователь с этим email
+    const existingUser = await db.collection('users').findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Пользователь с такой почтой уже существует' });
+    }
+
+    // Генерируем код подтверждения
+    const code = authController.generateVerificationCode();
+    const expires = Date.now() + 10 * 60 * 1000; // 10 минут
+
+    // Сохраняем код
+    authController.emailVerificationCodes.set(email, { code, expires });
+
+    // Отправляем код
+    authController.sendVerificationEmail(email, code);
+
+    res.json({ message: 'Код подтверждения отправлен на ваш email' });
+  }
+
   async register(req: any, res: any) {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name, verificationCode } = req.body;
       const db = req.app.locals.db;
       
       if (!db) {
         return res.status(500).json({ error: 'Database not connected' });
       }
+
+      // Проверяем код подтверждения
+      const storedData = authController.emailVerificationCodes.get(email);
+      if (!storedData || storedData.code !== verificationCode || Date.now() > storedData.expires) {
+        return res.status(400).json({ error: 'Неверный или устаревший код подтверждения' });
+      }
+
+      // Удаляем использованный код
+      authController.emailVerificationCodes.delete(email);
       
       const existingUser = await db.collection('users').findOne({ email });
       if (existingUser) {

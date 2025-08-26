@@ -53,4 +53,10 @@ module.exports = {
       directory: path.join(__dirname, 'client/public'),
     },
   },
+  watch: true,
+  watchOptions: {
+    ignored: /node_modules/,
+    poll: 500,
+    aggregateTimeout: 300,
+  },
 };
