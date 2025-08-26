@@ -12,14 +12,85 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 1001;
+  z-index: 1003;
 }
 
 .modal-close:hover {
   background: #ff6666;
 }
 
-.modal-canvas-container canvas {
+/* Стили для модального окна */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow: hidden; /* Отключаем скролл */
+}
+
+.modal-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.modal-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100% !important;
   height: 100% !important;
+}
+
+/* Стили для надписей поверх canvas */
+.modal-reward-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  color: white;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+}
+
+.modal-reward-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.modal-reward-description {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.modal-reward-price {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fbbf24;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.modal-reward-description-text {
+  font-size: 16px;
+  font-weight: 400;
+  color: #e2e8f0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  margin-top: 4px;
 }

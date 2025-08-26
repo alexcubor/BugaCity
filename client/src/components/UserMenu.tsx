@@ -15,11 +15,19 @@ interface User {
   rewards: string[];
 }
 
+interface Reward {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+}
+
 function UserMenu({ onLogout }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedReward, setSelectedReward] = useState<string | null>(null);
+  const [rewardsData, setRewardsData] = useState<Reward[]>([]);
 
   useEffect(() => {
     // Загружаем данные пользователя сразу при монтировании компонента
@@ -70,11 +78,32 @@ function UserMenu({ onLogout }: UserMenuProps) {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        
+        // Загружаем информацию о наградах пользователя
+        if (userData.rewards && userData.rewards.length > 0) {
+          await loadRewardsData(userData.rewards);
+        }
       }
     } catch (error) {
       console.error('Ошибка загрузки данных пользователя:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRewardsData = async (rewardIds: string[]) => {
+    try {
+      const response = await fetch('/api/awards');
+      if (response.ok) {
+        const allRewards = await response.json();
+        // Фильтруем только те награды, которые есть у пользователя
+        const userRewards = allRewards.filter((reward: Reward) => 
+          rewardIds.includes(reward.id)
+        );
+        setRewardsData(userRewards);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных наград:', error);
     }
   };
 
@@ -103,6 +132,11 @@ function UserMenu({ onLogout }: UserMenuProps) {
     const url = new URL(window.location.href);
     url.searchParams.delete('reward');
     window.history.pushState({}, '', url);
+  };
+
+  const getSelectedRewardData = (): Reward | null => {
+    if (!selectedReward) return null;
+    return rewardsData.find(reward => reward.id === selectedReward) || null;
   };
 
   const handleModalBackdropClick = (e: React.MouseEvent) => {
@@ -168,6 +202,9 @@ function UserMenu({ onLogout }: UserMenuProps) {
           onClose={closeModal}
           modalTitle={`Награда: ${selectedReward}`}
           userName={user.name}
+          rewardName={getSelectedRewardData()?.name}
+          rewardPrice={getSelectedRewardData()?.price}
+          rewardDescription={getSelectedRewardData()?.description}
           onLoad={() => {}}
           onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
         />

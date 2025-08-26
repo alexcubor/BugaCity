@@ -9,6 +9,10 @@ export interface RewardViewerComponentProps {
   onClose?: () => void;
   modalTitle?: string;
   userName: string;
+  // Информация о награде
+  rewardName?: string;
+  rewardPrice?: number;
+  rewardDescription?: string;
 }
 
 export type RewardSize = 'small' | 'medium' | 'large';

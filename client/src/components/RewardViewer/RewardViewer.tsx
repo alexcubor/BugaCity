@@ -34,11 +34,18 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   isModal = false,
   onClose,
   modalTitle,
-  userName
+  userName,
+  // Информация о награде
+  rewardName,
+  rewardPrice,
+  rewardDescription
 }) => {
-  // Логика работы с URL для модального окна
+  // Логика работы с URL для модального окна и отключение скролла
   useEffect(() => {
     if (isModal && onClose) {
+      // Отключаем скролл страницы
+      document.body.style.overflow = 'hidden';
+      
       const handleUrlChange = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const rewardParam = urlParams.get('reward');
@@ -48,7 +55,12 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       };
 
       window.addEventListener('popstate', handleUrlChange);
-      return () => window.removeEventListener('popstate', handleUrlChange);
+      
+      return () => {
+        window.removeEventListener('popstate', handleUrlChange);
+        // Восстанавливаем скролл при закрытии
+        document.body.style.overflow = 'auto';
+      };
     }
   }, [isModal, onClose]);
 
@@ -101,6 +113,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       Vector3.Zero(),
       scene
     );
+    
     camera.attachControl(canvas, true);
     camera.lowerRadiusLimit = 0.5;
     camera.upperRadiusLimit = 20;
@@ -323,13 +336,28 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   if (isModal) {
     return (
       <div className="modal-overlay" onClick={handleBackdropClick}>
-        <div>
+        <div className="modal-container">
           <button className="modal-close" onClick={handleClose}>
             ✕
           </button>
-          <h2>{modalTitle || `Награда: ${rewardId}`}</h2>
-          <div className="modal-canvas-container">
-            <canvas ref={canvasRef} />
+          <canvas ref={canvasRef} className="modal-canvas" />
+          {/* Информация о награде поверх canvas */}
+          <div className="modal-reward-info">
+            <div className="modal-reward-title">
+              {rewardName || rewardId}
+            </div>
+            <div className="modal-reward-description">
+              {rewardPrice && (
+                <div className="modal-reward-price">
+                  🪙 {rewardPrice} Глюкоинов
+                </div>
+              )}
+              {rewardDescription && (
+                <div className="modal-reward-description-text">
+                  {rewardDescription}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

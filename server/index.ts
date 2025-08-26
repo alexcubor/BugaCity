@@ -6,6 +6,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
+import awardRoutes from './routes/awards';
 
 // Загружаем переменные окружения
 dotenv.config({ path: '.env.dev' });
@@ -35,6 +36,7 @@ MongoClient.connect(mongoUri)
 // Маршруты
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/awards', awardRoutes);
 
 // Главная страница
 app.get('/', (req, res) => {
