@@ -18,58 +18,62 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
   const vkContainerRef = useRef<HTMLDivElement>(null);
   const oAuthRef = useRef<any>(null);
 
-  // Инициализация VK ID SDK
+    // Инициализация VK ID SDK
   useEffect(() => {
-    if (!window.VKIDSDK || !vkContainerRef.current) return;
+    // Добавляем небольшую задержку для гарантии загрузки SDK
+    const timer = setTimeout(() => {
+      if (!window.VKIDSDK || !vkContainerRef.current) return;
 
-    const VKID = window.VKIDSDK;
+      const VKID = window.VKIDSDK;
 
-    // Очищаем контейнер перед инициализацией
-    if (vkContainerRef.current) {
-      vkContainerRef.current.innerHTML = '';
-    }
-
-    // Инициализация конфигурации
-    VKID.Config.init({
-      app: config.VK_CLIENT_ID,
-      redirectUrl: window.location.hostname === 'localhost' || window.location.hostname.includes('tuna.am')
-        ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
-        : 'https://gluko.city/api/auth/callback',
-      responseMode: VKID.ConfigResponseMode.Callback,
-      source: VKID.ConfigSource.LOWCODE,
-      scope: '',
-    });
-
-    // Уничтожаем предыдущий экземпляр, если он существует
-    if (oAuthRef.current && oAuthRef.current.destroy) {
-      oAuthRef.current.destroy();
-    }
-
-    const oneTap = new VKID.OneTap();
-    oAuthRef.current = oneTap;
-
-    oneTap.render({
-      container: vkContainerRef.current,
-      fastAuthEnabled: false,
-      showAlternativeLogin: true,
-      styles: {
-        borderRadius: 12,
-        width: 40,
-        height: 40
+      // Очищаем контейнер перед инициализацией
+      if (vkContainerRef.current) {
+        vkContainerRef.current.innerHTML = '';
       }
-    })
-    .on(VKID.WidgetEvents.ERROR, handleVKError)
-    .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload: any) {
-      const code = payload.code;
-      const deviceId = payload.device_id;
 
-      VKID.Auth.exchangeCode(code, deviceId)
-        .then(handleVKSuccess)
-        .catch(handleVKError);
-    });
+      // Инициализация конфигурации
+      VKID.Config.init({
+        app: config.VK_CLIENT_ID,
+        redirectUrl: window.location.hostname === 'localhost' || window.location.hostname.includes('tuna.am')
+          ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
+          : 'https://gluko.city/api/auth/callback',
+        responseMode: VKID.ConfigResponseMode.Callback,
+        source: VKID.ConfigSource.LOWCODE,
+        scope: '',
+      });
+
+      // Уничтожаем предыдущий экземпляр, если он существует
+      if (oAuthRef.current && oAuthRef.current.destroy) {
+        oAuthRef.current.destroy();
+      }
+
+      const oneTap = new VKID.OneTap();
+      oAuthRef.current = oneTap;
+
+      oneTap.render({
+        container: vkContainerRef.current,
+        fastAuthEnabled: false,
+        showAlternativeLogin: true,
+        styles: {
+          borderRadius: 12,
+          width: 40,
+          height: 40
+        }
+      })
+      .on(VKID.WidgetEvents.ERROR, handleVKError)
+      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload: any) {
+        const code = payload.code;
+        const deviceId = payload.device_id;
+
+        VKID.Auth.exchangeCode(code, deviceId)
+          .then(handleVKSuccess)
+          .catch(handleVKError);
+      });
+    }, 100);
 
     // Очистка при размонтировании
     return () => {
+      clearTimeout(timer);
       if (oAuthRef.current && oAuthRef.current.destroy) {
         oAuthRef.current.destroy();
         oAuthRef.current = null;

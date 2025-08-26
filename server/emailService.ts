@@ -7,8 +7,8 @@ class EmailService {
     // Создаем транспортер для отправки email через ваш SMTP сервер
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.jino.ru',
-      port: parseInt(process.env.SMTP_PORT || '465'),
-      secure: true, // Используем SSL
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false, // Для порта 587 используем STARTTLS
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
