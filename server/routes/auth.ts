@@ -3,6 +3,9 @@ import { authController } from '../controllers/authController';
 
 const router = express.Router();
 
+// Проверка существования email
+router.post('/check-email', authController.checkEmailExists);
+
 // Отправка кода подтверждения
 router.post('/send-verification', authController.sendVerificationCode);
 

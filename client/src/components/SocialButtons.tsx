@@ -124,7 +124,13 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
       const result = await response.json();
       if (result.token) {
         localStorage.setItem('token', result.token);
-        window.location.href = '/';
+        
+        // Если это новый пользователь, перенаправляем на награду
+        if (result.isNewUser) {
+          window.location.href = '/?reward=pioneer';
+        } else {
+          window.location.href = '/';
+        }
       } else {
         alert(result.error || 'Ошибка авторизации');
       }
@@ -154,9 +160,15 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
       if (event.origin !== window.location.origin) return;
       
       if (event.data.type === 'social_auth_success') {
-        const { token, user } = event.data;
+        const { token, user, isNewUser } = event.data;
         localStorage.setItem('token', token);
-        window.location.href = '/';
+        
+        // Если это новый пользователь, перенаправляем на награду
+        if (isNewUser) {
+          window.location.href = '/?reward=pioneer';
+        } else {
+          window.location.href = '/';
+        }
         window.removeEventListener('message', messageListener);
       } else if (event.data.type === 'social_auth_error') {
         alert(event.data.error);

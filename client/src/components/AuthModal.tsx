@@ -85,9 +85,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           setIsAnimating(false);
         }, 300);
       } else {
-        // Для регистрации - отправляем код
-        await handleSendVerificationCode();
+        // Для регистрации - сначала проверяем email
+        await checkEmailAndSendCode();
       }
+    }
+  };
+
+  const checkEmailAndSendCode = async () => {
+    try {
+      // Сначала проверяем, существует ли email
+      const checkResponse = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const checkResult = await checkResponse.json();
+      
+      if (checkResult.exists) {
+        setMessage('Пользователь с такой почтой уже существует');
+        setMessageType('error');
+        console.log('Email уже существует:', checkResult);
+        return;
+      }
+
+      console.log('Email свободен, отправляем код');
+      // Если email свободен, отправляем код
+      await handleSendVerificationCode();
+    } catch (error) {
+      console.error('Ошибка проверки email:', error);
+      setMessage('Ошибка проверки email');
+      setMessageType('error');
     }
   };
 
@@ -143,8 +171,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
         localStorage.setItem('token', result.token);
         localStorage.setItem('userId', result.userId);
         
-        onSuccess(result.token, result.userId);
-        onClose();
+        // Если это регистрация (не логин), перенаправляем на награду
+        if (!isLogin) {
+          window.location.href = '/?reward=pioneer';
+        } else {
+          onSuccess(result.token, result.userId);
+          onClose();
+        }
       } else {
         alert(result.error);
       }
@@ -293,7 +326,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
             )}
           </div>
           
-          {message && showVerification && !showPassword && (
+          {message && (
             <div className={`message ${messageType}`} style={{
               padding: '10px',
               margin: '10px 0',

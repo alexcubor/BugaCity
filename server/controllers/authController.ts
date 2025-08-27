@@ -21,7 +21,7 @@ class AuthController {
     }
   }
 
-  async sendVerificationCode(req: any, res: any) {
+  async checkEmailExists(req: any, res: any) {
     const { email } = req.body;
     
     if (!email) {
@@ -33,10 +33,25 @@ class AuthController {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    // Проверяем, не зарегистрирован ли уже пользователь с этим email
+    // Проверяем, существует ли пользователь с таким email
     const existingUser = await db.collection('users').findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Пользователь с такой почтой уже существует' });
+    
+    res.json({ 
+      exists: !!existingUser,
+      message: existingUser ? 'Пользователь с такой почтой уже существует' : 'Email свободен'
+    });
+  }
+
+  async sendVerificationCode(req: any, res: any) {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email обязателен' });
+    }
+
+    const db = req.app.locals.db;
+    if (!db) {
+      return res.status(500).json({ error: 'Database not connected' });
     }
 
     // Генерируем код подтверждения
@@ -79,24 +94,14 @@ class AuthController {
         return res.status(400).json({ error: 'Пользователь с такой почтой уже существует' });
       }
 
-      // Проверяем количество пользователей с наградой Pioneer
-      const pioneerCount = await db.collection('users').countDocuments({
-        rewards: { $in: ['pioneer'] }
-      });
-       
       const hashedPassword = await bcrypt.hash(password, 12);
       const userData: any = {
         email,
         password: hashedPassword,
         name: name || '', // Оставляем пустым, если имя не передано
         glukocoins: 0,
-        rewards: []
+        rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
       };
-       
-      // Добавляем награду Pioneer, если лимит не превышен (лимит 2)
-      if (pioneerCount < 2) {
-        userData.rewards.push('pioneer');
-      }
        
       const user = await db.collection('users').insertOne(userData);
 
@@ -105,8 +110,8 @@ class AuthController {
       res.json({ 
         token, 
         userId: user.insertedId,
-        isPioneer: pioneerCount < 2,
-        pioneerNumber: pioneerCount < 2 ? pioneerCount + 1 : null
+        isPioneer: true,
+        pioneerNumber: 1
       });
     } catch (error) {
       res.status(500).json({ error: 'Ошибка регистрации' });
@@ -228,10 +233,14 @@ class AuthController {
           name: userData.first_name + ' ' + userData.last_name,
           email: userData.email,
           glukocoins: 0,
-          rewards: []
+          rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
         });
 
         user = await db.collection('users').findOne({ _id: result.insertedId });
+        
+        // Перенаправляем на награду для нового пользователя
+        res.json({ token: jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' }), user, isNewUser: true });
+        return;
       }
 
       const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
@@ -277,10 +286,31 @@ class AuthController {
             name: userData.name,
             email: userData.email,
             glukocoins: 0,
-            rewards: []
+            rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
           });
 
           user = await db.collection('users').findOne({ _id: result.insertedId });
+          
+          // Перенаправляем на награду для нового пользователя
+          const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
+          const origin = req.headers.origin || 'https://gluko-city.ru.tuna.am';
+          
+          res.send(`
+            <html>
+              <body>
+                <script>
+                  window.opener.postMessage({
+                    type: 'social_auth_success',
+                    token: '${token}',
+                    user: ${JSON.stringify(user)},
+                    isNewUser: true
+                  }, '${origin}');
+                  window.close();
+                </script>
+              </body>
+            </html>
+          `);
+          return;
         }
 
         const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
