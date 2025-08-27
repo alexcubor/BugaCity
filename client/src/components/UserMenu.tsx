@@ -36,29 +36,55 @@ function UserMenu({ onLogout }: UserMenuProps) {
     }
   }, []);
 
-  // Проверяем URL при загрузке страницы
+  // Проверяем URL при загрузке страницы и при изменениях
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const rewardParam = urlParams.get('reward');
-    if (rewardParam) {
-      setSelectedReward(rewardParam);
-      // Загружаем данные пользователя, если есть параметр reward
-      loadUserData();
-    }
-  }, []);
-
-  // Обработчик кнопки "Назад" в браузере
-  useEffect(() => {
-    const handlePopState = () => {
+    const checkUrlForReward = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const rewardParam = urlParams.get('reward');
-      if (!rewardParam) {
+      if (rewardParam) {
+        setSelectedReward(rewardParam);
+        // Загружаем данные пользователя, если есть параметр reward
+        loadUserData();
+      } else {
         setSelectedReward(null);
       }
     };
 
+    // Проверяем сразу при загрузке
+    checkUrlForReward();
+
+    // Слушаем изменения URL
+    const handleUrlChange = () => {
+      checkUrlForReward();
+    };
+
+    // Слушаем pushState и replaceState
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function(...args) {
+      originalPushState.apply(history, args);
+      setTimeout(handleUrlChange, 0);
+    };
+
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(history, args);
+      setTimeout(handleUrlChange, 0);
+    };
+
+    // Обработчик кнопки "Назад" в браузере
+    const handlePopState = () => {
+      checkUrlForReward();
+    };
+
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Восстанавливаем оригинальные методы
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+    };
   }, []);
 
 
@@ -184,11 +210,11 @@ function UserMenu({ onLogout }: UserMenuProps) {
           </div>
 
           {/* Меню действий */}
-            <div>
-              <button onClick={handleLogout}>
-                Выйти
-              </button>
-            </div>
+          <div>
+            <button onClick={handleLogout}>
+              Выйти
+            </button>
+          </div>
         </div>
       )}
 

@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import SocialButtons from './SocialButtons';
-import './LoginPage.css';
+import './AuthModal.css';
 
-const LoginPage: React.FC = () => {
+interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (token: string, userId: string) => void;
+}
+
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -106,12 +112,10 @@ const LoginPage: React.FC = () => {
   };
 
   const handleSocialSuccess = (data: any) => {
-    // Обработка успешной авторизации через социальные сети
     console.log('Social login success:', data);
   };
 
   const handleSocialError = (error: any) => {
-    // Обработка ошибки авторизации через социальные сети
     console.error('Social login error:', error);
   };
 
@@ -139,11 +143,8 @@ const LoginPage: React.FC = () => {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userId', result.userId);
         
-        if (result.isPioneer) {
-          alert(`🎉 Поздравляем! Вы стали Pioneer #${result.pioneerNumber}!`);
-        }
-        
-        window.location.href = '/'; // Возвращаемся на главную
+        onSuccess(result.token, result.userId);
+        onClose();
       } else {
         alert(result.error);
       }
@@ -152,9 +153,26 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setShowVerification(false);
+    setIsCodeSent(false);
+    setVerificationCode('');
+    setMessage('');
+    setMessageType('');
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <div>
-      <div className="container">
+    <div className="auth-modal-overlay" onClick={onClose}>
+      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="auth-modal-close" onClick={onClose}>×</button>
+        
         <h1>{isLogin ? 'Вход' : 'Регистрация'}</h1>
         
         <form onSubmit={handleSubmit}>
@@ -262,7 +280,6 @@ const LoginPage: React.FC = () => {
                     disabled
                   />
                 </div>
-
                 <div className="form-field slide-in">
                   <label>Confirm Password:</label>
                   <input
@@ -328,13 +345,7 @@ const LoginPage: React.FC = () => {
         <button 
           onClick={() => {
             setIsLogin(!isLogin);
-            setShowPassword(false);
-            setShowConfirmPassword(false);
-            setShowVerification(false);
-            setIsCodeSent(false);
-            setVerificationCode('');
-            setMessage('');
-            setMessageType('');
+            resetForm();
           }}
         >
           {isLogin ? 'Перейти к регистрации' : 'Перейти к входу'}
@@ -350,4 +361,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default AuthModal;

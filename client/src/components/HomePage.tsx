@@ -3,6 +3,7 @@ import UserMenu from './UserMenu';
 import SupportButton from './SupportButton';
 import Footer from './Footer';
 import NameInputModal from './NameInputModal';
+import AuthModal from './AuthModal';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -10,6 +11,7 @@ const HomePage: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [showNameModal, setShowNameModal] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     // Проверяем, есть ли токен в localStorage
@@ -103,36 +105,38 @@ const HomePage: React.FC = () => {
         setUser({ ...user, name });
         setShowNameModal(false);
         
-        // Проверяем, есть ли уже награда Pioneer
+        // Попытка выдать награду, если её ещё нет
         if (!user.rewards || !user.rewards.includes('pioneer')) {
-          console.log('Отправляем запрос на выдачу награды...');
-          const rewardResponse = await fetch(`/api/users/${encodeURIComponent(user.email)}/add-rewards`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ rewards: ['pioneer'] })
-          });
+          console.log('Попытка выдать награду Pioneer...');
+          try {
+            const rewardResponse = await fetch(`/api/users/${encodeURIComponent(user.email)}/add-rewards`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ rewards: ['pioneer'] })
+            });
 
-          console.log('Ответ на выдачу награды:', rewardResponse.status);
-          if (rewardResponse.ok) {
-            const rewardResult = await rewardResponse.json();
-            console.log('Результат выдачи награды:', rewardResult);
-            
-            // Обновляем данные пользователя
-            setUser((prev: any) => ({ ...prev, rewards: [...(prev.rewards || []), 'pioneer'] }));
-            
-            // Перенаправляем на URL с наградой
-            const url = new URL(window.location.href);
-            url.searchParams.set('reward', 'pioneer');
-            window.location.href = url.toString();
-          } else {
-            const errorText = await rewardResponse.text();
-            console.error('Ошибка выдачи награды:', errorText);
+            if (rewardResponse.ok) {
+              const rewardResult = await rewardResponse.json();
+              console.log('Награда успешно выдана:', rewardResult);
+              setUser((prev: any) => ({ ...prev, rewards: [...(prev.rewards || []), 'pioneer'] }));
+            } else {
+              console.log('Награда уже есть у пользователя или ошибка выдачи');
+            }
+          } catch (error) {
+            console.log('Ошибка при выдаче награды:', error);
           }
-                } else {
-          console.log('Награда Pioneer уже есть у пользователя');
         }
+        
+        // Перезагружаем данные пользователя и перенаправляем на награду
+        await loadUserData();
+        
+        // Перенаправляем на страницу с наградой Pioneer
+        const url = new URL(window.location.href);
+        url.searchParams.set('reward', 'pioneer');
+        window.history.pushState({}, '', url);
+        console.log('Перенаправляем на награду Pioneer');
       } else {
         const errorText = await response.text();
         console.error('Ошибка обновления имени:', errorText);
@@ -142,6 +146,13 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleAuthSuccess = (token: string, userId: string) => {
+    setIsLoggedIn(true);
+    loadUserData();
+  };
+
+
+
   return (
     <div>
       <div style={{
@@ -150,8 +161,72 @@ const HomePage: React.FC = () => {
         backgroundImage: 'linear-gradient(to bottom, transparent 0%, transparent 90%, var(--color-background) 100%), url(/images/glukograd_concept.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}></div>
+        backgroundRepeat: 'no-repeat',
+        position: 'relative'
+      }}>
+        {/* Текст поверх изображения - только для авторизованных пользователей */}
+        {isLoggedIn && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            zIndex: 5
+          }}>
+            <h1 style={{
+              fontSize: '3rem',
+              fontWeight: 'bold',
+              color: 'white',
+              margin: 0,
+              lineHeight: 1.2
+            }}>
+              Скоро здесь появятся<br />
+              новые активности
+            </h1>
+          </div>
+        )}
+
+        {/* Кнопка "ВОЙТИ" по центру - только для неавторизованных пользователей */}
+        {!isLoggedIn && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            zIndex: 5
+          }}>
+            <button
+              onClick={() => setShowAuthModal(true)}
+              style={{
+                fontSize: '2.5rem',
+                fontWeight: 'bold',
+                color: 'white',
+                background: 'rgba(0, 0, 0, 0.7)',
+                border: '3px solid white',
+                borderRadius: '15px',
+                padding: '20px 40px',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: '3px',
+                transition: 'all 0.3s ease',
+                backdropFilter: 'blur(10px)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                e.currentTarget.style.color = 'black';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.7)';
+                e.currentTarget.style.color = 'white';
+              }}
+            >
+              ВОЙТИ
+            </button>
+          </div>
+        )}
+      </div>
       <div>
         <header className="header">
           <div className="logo-container">
@@ -162,11 +237,7 @@ const HomePage: React.FC = () => {
             />
           </div>
           <nav>
-            {isLoggedIn ? (
-              <UserMenu onLogout={handleLogout} />
-            ) : (
-              <a href="/login">Войти</a>
-            )}
+            {isLoggedIn && <UserMenu onLogout={handleLogout} />}
           </nav>
         </header>
 
@@ -205,6 +276,13 @@ const HomePage: React.FC = () => {
         isOpen={showNameModal}
         onSubmit={handleNameSubmit}
         onClose={() => setShowNameModal(false)}
+      />
+
+      {/* Модальное окно для авторизации */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );

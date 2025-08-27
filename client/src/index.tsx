@@ -1,17 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import HomePage from './components/HomePage';
-import LoginPage from './components/LoginPage';
 import SceneEditor from './admin/SceneEditor';
 import './styles.css';
 
 // Главный компонент с маршрутизацией
 function App() {
   const path = window.location.pathname;
-  
-  if (path === '/login') {
-    return <LoginPage />;
-  }
   
   if (path === '/admin/scene') {
     return <SceneEditor />;
