@@ -4,6 +4,7 @@ import SupportButton from './SupportButton';
 import Footer from './Footer';
 import NameInputModal from './NameInputModal';
 import AuthModal from './AuthModal';
+import ParallaxImage from './ParallaxImage';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -155,37 +156,16 @@ const HomePage: React.FC = () => {
 
   return (
     <div>
-      <div style={{
-        width: '100%',
-        height: '100vh',
-        backgroundImage: 'linear-gradient(to bottom, transparent 0%, transparent 90%, var(--color-background) 100%), url(/images/glukograd_concept.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        position: 'relative'
-      }}>
-        {/* Текст поверх изображения - только для авторизованных пользователей */}
-        {isLoggedIn && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-            zIndex: 5
-          }}>
-            <h1 style={{
-              fontSize: '3rem',
-              fontWeight: 'bold',
-              color: 'white',
-              margin: 0,
-              lineHeight: 1.2
-            }}>
-              Скоро здесь появятся<br />
-              новые активности
-            </h1>
-          </div>
-        )}
+      <ParallaxImage
+        mainImage="/images/glukograd_bg.png"
+        depthMap="/images/glukograd_bg_depth.png"
+        foregroundImage="/images/glukograd_fg.png"
+        foregroundDepthMap="/images/glukograd_fg_depth.png"
+        intensity={3.0}
+        minOffset={-100}
+        maxOffset={200}
+        sensitivity={1.2}
+      >
 
         {/* Кнопка "ВОЙТИ" по центру - только для неавторизованных пользователей */}
         {!isLoggedIn && (
@@ -226,7 +206,28 @@ const HomePage: React.FC = () => {
             </button>
           </div>
         )}
-      </div>
+      </ParallaxImage>
+      
+      {/* Секция с надписью для авторизованных пользователей */}
+      {isLoggedIn && (
+        <section style={{
+          padding: '60px 20px',
+          textAlign: 'center',
+          color: 'white'
+        }}>
+          <h1 style={{
+            fontSize: '3rem',
+            fontWeight: 'bold',
+            margin: 0,
+            lineHeight: 1.2,
+            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.7)'
+          }}>
+            Скоро здесь появятся<br />
+            новые активности
+          </h1>
+        </section>
+      )}
+      
       <div>
         <header className="header">
           <div className="logo-container">

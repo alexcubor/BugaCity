@@ -1,0 +1,62 @@
+.parallax-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100vh;
+}
+
+.parallax-container canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.parallax-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.parallax-content > * {
+  pointer-events: auto;
+}
+
+/* Анимация загрузки */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.parallax-container.loaded canvas {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .parallax-container {
+    height: 70vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .parallax-container {
+    height: 60vh;
+  }
+}
+
+/* Оптимизация производительности */
+.parallax-container {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
