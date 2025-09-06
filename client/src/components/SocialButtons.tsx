@@ -180,9 +180,9 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
   };
 
   return (
-    <div>
+    <div className="social-buttons">
       <p>Или {isLogin ? 'войдите' : 'зарегистрируйтесь'} через:</p>
-      <div className="social-buttons">
+      <div className="social-buttons-row">
         <button
           type="button"
           className="social-btn"

@@ -78,16 +78,40 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const handleNextStep = async () => {
     if (email && !isAnimating) {
       if (isLogin) {
-        // Для входа - сразу показываем пароль
+        // Для входа - сначала проверяем, существует ли email
+        await checkEmailExists();
+      } else {
+        // Для регистрации - сначала проверяем email
+        await checkEmailAndSendCode();
+      }
+    }
+  };
+
+  const checkEmailExists = async () => {
+    try {
+      const checkResponse = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const checkResult = await checkResponse.json();
+      
+      if (checkResult.exists) {
+        // Email существует - переходим к вводу пароля
         setIsAnimating(true);
         setTimeout(() => {
           setShowPassword(true);
           setIsAnimating(false);
         }, 300);
       } else {
-        // Для регистрации - сначала проверяем email
-        await checkEmailAndSendCode();
+        // Email не существует - показываем ошибку
+        setMessage('Пользователя с таким email не существует');
+        setMessageType('error');
       }
+    } catch (error) {
+      setMessage('Ошибка проверки email');
+      setMessageType('error');
     }
   };
 
@@ -110,11 +134,43 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
       }
 
       console.log('Email свободен, отправляем код');
-      // Если email свободен, отправляем код
-      await handleSendVerificationCode();
+      // Сразу показываем поле для ввода кода и сообщение
+      setIsCodeSent(true);
+      setMessage('Код подтверждения отправлен на вашу почту');
+      setMessageType('success');
+      setIsAnimating(true);
+      setTimeout(() => {
+        setShowVerification(true);
+        setIsAnimating(false);
+      }, 300);
+
+      // Отправляем код в фоне (не ждем ответа)
+      sendVerificationCodeInBackground();
     } catch (error) {
       console.error('Ошибка проверки email:', error);
       setMessage('Ошибка проверки email');
+      setMessageType('error');
+    }
+  };
+
+  const sendVerificationCodeInBackground = async () => {
+    try {
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        // Если отправка не удалась, обновляем сообщение
+        setMessage(result.error || 'Ошибка отправки кода');
+        setMessageType('error');
+      }
+    } catch (error) {
+      // Если ошибка сети, обновляем сообщение
+      setMessage('Ошибка сети');
       setMessageType('error');
     }
   };

@@ -400,11 +400,16 @@ const SceneEditor: React.FC = () => {
 
       {/* Панель настроек */}
       <div style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
         width: '350px',
+        height: '100vh',
         backgroundColor: '#2a2a2a',
         color: 'white',
         padding: '20px',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        zIndex: 10
       }}>
         <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>
           3D Scene Editor

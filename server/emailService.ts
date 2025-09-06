@@ -18,13 +18,13 @@ class EmailService {
 
   async sendVerificationEmail(email: string, code: string): Promise<void> {
     const mailOptions = {
-      from: '"GlukoCity" <hello@gluko.city>', // От кого
+      from: '"Глюкоград" <hello@gluko.city>', // От кого
       to: email, // Кому
       subject: 'Подтверждение регистрации - Глюкоград', // Тема
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="margin: 0; font-size: 28px;">🎮 Глюкоград</h1>
+          <div style="background: linear-gradient(135deg, #E20048 0%, #1A1EB2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">Глюкоград</h1>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">Волшебство в твоем городе только начинается!</p>
           </div>
           
@@ -55,7 +55,7 @@ class EmailService {
           <div style="text-align: center; margin-top: 20px; padding: 20px; border-top: 1px solid #eee;">
             <p style="color: #999; font-size: 12px; margin: 0;">
               С уважением,<br>
-              Команда GlukoCity<br>
+              Команда Глюкограда<br>
               <a href="https://gluko.city" style="color: #667eea;">gluko.city</a>
             </p>
           </div>
