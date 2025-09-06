@@ -1,6 +1,159 @@
-.support-button-container {
-  display: flex;
+/* Кнопка поддержки проекта */
+.button-container {
   justify-content: center;
   align-items: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.button-item {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  min-height: 320px;
+  padding-bottom: 80px;
+  will-change: transform;
+  backface-visibility: hidden;
+  z-index: 100;
+}
+
+.button-item::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 440px;
+  height: 300px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.button-item:hover {
+  transform: scale(1.15);
+}
+
+.support-project-diagonal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Dela Gothic One', 'Golos Text', 'Bitter', Arial, sans-serif;
+  font-weight: 900;
+  font-size: 64px;
+  color: #e0b172;
+  text-align: center;
+  line-height: 1;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 8px #000;
+  z-index: 100;
+  mix-blend-mode: lighten;
+  opacity: 0.95;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.support-project-diagonal .support-word,
+.support-project-diagonal .project-word {
+  display: inline-block;
+  transition: transform 0.5s cubic-bezier(.4, 2, .6, 1);
+}
+
+.support-project-diagonal .support-word {
+  font-size: 46px;
+  transform: translateY(calc(-80px * var(--hover-progress, 0))) rotate(calc(-30deg * var(--hover-progress, 0))) scale(calc(1 - 0.05 * var(--hover-progress, 0)));
+}
+
+.support-project-diagonal .project-word {
+  font-size: 80px;
+  transform: translateY(calc(20px * var(--hover-progress, 0))) rotate(calc(-30deg * var(--hover-progress, 0))) scale(calc(1 + 0.05 * var(--hover-progress, 0)));
+}
+
+.button-item:hover .support-project-diagonal .support-word,
+.button-item.auto-hover .support-project-diagonal .support-word {
+  transform: translate(0px, -80px) rotate(-30deg) scale(0.95);
+}
+
+.button-item:hover .support-project-diagonal .project-word,
+.button-item.auto-hover .support-project-diagonal .project-word {
+  transform: translate(0px, 20px) rotate(-30deg) scale(1.05);
+}
+
+/* Модальное окно поддержки */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: #181818;
+  border-radius: 18px;
+  padding: 40px 32px 32px;
+  box-shadow: 0 8px 32px #000a;
+  min-width: 320px;
+  max-width: 90vw;
+  text-align: center;
+  position: relative;
+}
+
+.modal-label {
+  position: absolute;
+  right: 18px;
+  top: 12px;
+  font-size: 2rem;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.modal-hint {
+  color: #efefef;
+  margin: 20px;
+}
+
+.modal-hint-small {
+  font-size: 0.9em;
+  color: #9c9c9c;
+  opacity: 0.85;
+  display: block;
+  margin-top: 2px;
+}
+
+.modal-boosty-btn {
+  background: #ff9100;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 10px 0;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  margin: 0 auto 10px;
   width: 100%;
+  transition: background 0.2s;
+}
+
+.modal-boosty-btn:hover {
+  background: #ffb347;
+}
+
+@media (max-width: 600px) {
+  .button-item {
+    transform: scale(0.7);
+    transform-origin: top center;
+  }
 }
