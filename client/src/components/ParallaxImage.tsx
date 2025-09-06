@@ -127,7 +127,6 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
     if (containerRef.current && mainImageRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const containerWidth = containerRect.width;
-      const containerHeight = containerRect.height * 0.7; // 70% от высоты контейнера
       
       // Получаем оригинальные размеры изображения
       const imageWidth = mainImageRef.current.naturalWidth;
@@ -135,16 +134,30 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
       
       // Вычисляем соотношение сторон
       const imageAspectRatio = imageWidth / imageHeight;
-      const containerAspectRatio = containerWidth / containerHeight;
       
-      // Используем ровно 70% высоты, подгоняем ширину под пропорции (object-fit: cover)
-      let canvasHeight = containerHeight; // 70% от полной высоты экрана
-      let canvasWidth = canvasHeight * imageAspectRatio; // Ширина по пропорциям
+      let canvasWidth, canvasHeight;
       
-      // Если ширина меньше контейнера, увеличиваем до полной ширины
-      if (canvasWidth < containerWidth) {
+      if (isMobile) {
+        // На мобильных: используем 70% высоты экрана
+        const containerHeight = containerRect.height * 0.7;
+        canvasHeight = containerHeight;
+        canvasWidth = canvasHeight * imageAspectRatio;
+        
+        // Если ширина меньше контейнера, увеличиваем до полной ширины
+        if (canvasWidth < containerWidth) {
+          canvasWidth = containerWidth;
+          canvasHeight = containerWidth / imageAspectRatio;
+        }
+      } else {
+        // На десктопе: используем полную ширину контейнера, высота по пропорциям
+        // Контейнер подстраивается под размер картинки
         canvasWidth = containerWidth;
         canvasHeight = containerWidth / imageAspectRatio;
+        
+        // Обновляем высоту контейнера под размер картинки
+        if (containerRef.current) {
+          containerRef.current.style.height = `${canvasHeight}px`;
+        }
       }
       
       // Увеличиваем разрешение для четкости (device pixel ratio)
@@ -156,7 +169,7 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
         height: Math.floor(canvasHeight * scaleFactor)
       });
     }
-  }, []);
+  }, [isMobile]);
 
   // WebGL шейдеры
   const vertexShaderSource = `
@@ -638,9 +651,10 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
       className={`parallax-container ${className}`}
       style={{
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',
         width: '100%',
-        height: '100vh'
+        height: isMobile ? '100vh' : 'auto',
+        minHeight: isMobile ? '100vh' : '100vh'
       }}
     >
       {/* Скрытые изображения для загрузки */}
