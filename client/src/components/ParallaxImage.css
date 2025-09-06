@@ -5,12 +5,13 @@
   height: 100vh;
 }
 
+
 .parallax-container canvas {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
   will-change: transform;
   backface-visibility: hidden;
+  /* Градиент маска как на buga.city */
+  mask: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
+  -webkit-mask: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
 }
 
 .parallax-content {

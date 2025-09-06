@@ -167,40 +167,12 @@ const HomePage: React.FC = () => {
         sensitivity={1.2}
       >
 
-        {/* Кнопка "ВОЙТИ" по центру - только для неавторизованных пользователей */}
+        {/* Кнопка "ВОЙТИ" - только для неавторизованных пользователей */}
         {!isLoggedIn && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-            zIndex: 5
-          }}>
+          <div className="login-button-container">
             <button
+              className="login-button"
               onClick={() => setShowAuthModal(true)}
-              style={{
-                fontSize: '2.5rem',
-                fontWeight: 'bold',
-                color: 'white',
-                background: 'rgba(0, 0, 0, 0.7)',
-                border: '3px solid white',
-                borderRadius: '15px',
-                padding: '20px 40px',
-                cursor: 'pointer',
-                textTransform: 'uppercase',
-                letterSpacing: '3px',
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
-                e.currentTarget.style.color = 'black';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.7)';
-                e.currentTarget.style.color = 'white';
-              }}
             >
               ВОЙТИ
             </button>

@@ -22,3 +22,56 @@
   align-items: center;
   padding: 0 20px;
 }
+
+/* Стили для кнопки ВОЙТИ */
+.login-button-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 5;
+}
+
+.login-button {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  border: 3px solid white;
+  border-radius: 15px;
+  padding: 20px 40px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.login-button:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .login-button-container {
+    top: auto;
+    bottom: 33.33%; /* 2/3 от высоты экрана снизу */
+    transform: translateX(-50%);
+  }
+  
+  .login-button {
+    font-size: 2rem;
+    padding: 15px 30px;
+    letter-spacing: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-button {
+    font-size: 1.8rem;
+    padding: 12px 25px;
+    letter-spacing: 1px;
+  }
+}

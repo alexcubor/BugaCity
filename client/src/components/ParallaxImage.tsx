@@ -36,7 +36,11 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
   const [targetMousePosition, setTargetMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 1920, height: 1080 });
+  const [isMobile, setIsMobile] = useState(false);
+  const [gyroPermission, setGyroPermission] = useState<'unknown' | 'granted' | 'denied'>('unknown');
   const animationFrameRef = useRef<number>();
+  const [initialOrientation, setInitialOrientation] = useState<{beta: number, gamma: number} | null>(null);
+  const [buttonClicked, setButtonClicked] = useState(false);
   
   // Кэш для текстур и uniform locations
   const textureCacheRef = useRef<{
@@ -48,6 +52,59 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
   
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const programRef = useRef<WebGLProgram | null>(null);
+  
+  // Функция для определения мобильных устройств
+  const detectMobile = useCallback(() => {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    return isMobileDevice || isTouchDevice;
+  }, []);
+
+  // Функция для запроса разрешения на гироскоп
+  const requestGyroPermission = useCallback(async () => {
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        const response = await (DeviceOrientationEvent as any).requestPermission();
+        if (response === 'granted') {
+          setGyroPermission('granted');
+          
+          // Запоминаем начальную позицию при первом событии
+          let isFirstEvent = true;
+          let initialBeta = 0;
+          let initialGamma = 0;
+          
+          window.addEventListener('deviceorientation', (e: DeviceOrientationEvent) => {
+            const beta = e.beta || 0;
+            const gamma = e.gamma || 0;
+            
+            // Запоминаем начальную позицию при первом событии
+            if (isFirstEvent) {
+              initialBeta = beta;
+              initialGamma = gamma;
+              setInitialOrientation({ beta, gamma });
+              isFirstEvent = false;
+              return; // Не обрабатываем первое событие
+            }
+            
+            // Вычисляем отклонение от начальной позиции
+            const deltaBeta = beta - initialBeta;
+            const deltaGamma = gamma - initialGamma;
+            
+            const maxAngle = 30;
+            const x = Math.max(-1, Math.min(1, deltaGamma / maxAngle)) * sensitivity;
+            const y = Math.max(-1, Math.min(1, deltaBeta / maxAngle)) * sensitivity;
+            setTargetMousePosition({ x, y });
+          }, true);
+        } else {
+          setGyroPermission('denied');
+        }
+      }
+    } catch (error) {
+      console.log('Ошибка запроса разрешения на гироскоп:', error);
+      setGyroPermission('denied');
+    }
+  }, [sensitivity]);
   const lastUpdateTime = useRef<number>(0);
 
   // Создание текстуры из изображения
@@ -67,11 +124,36 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
 
   // Функция для обновления размера canvas
   const updateCanvasSize = useCallback(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
+    if (containerRef.current && mainImageRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height * 0.7; // 70% от высоты контейнера
+      
+      // Получаем оригинальные размеры изображения
+      const imageWidth = mainImageRef.current.naturalWidth;
+      const imageHeight = mainImageRef.current.naturalHeight;
+      
+      // Вычисляем соотношение сторон
+      const imageAspectRatio = imageWidth / imageHeight;
+      const containerAspectRatio = containerWidth / containerHeight;
+      
+      // Используем ровно 70% высоты, подгоняем ширину под пропорции (object-fit: cover)
+      let canvasHeight = containerHeight; // 70% от полной высоты экрана
+      let canvasWidth = canvasHeight * imageAspectRatio; // Ширина по пропорциям
+      
+      // Если ширина меньше контейнера, увеличиваем до полной ширины
+      if (canvasWidth < containerWidth) {
+        canvasWidth = containerWidth;
+        canvasHeight = containerWidth / imageAspectRatio;
+      }
+      
+      // Увеличиваем разрешение для четкости (device pixel ratio)
+      const pixelRatio = window.devicePixelRatio || 1;
+      const scaleFactor = Math.min(pixelRatio, 2); // Ограничиваем до 2x для производительности
+      
       setCanvasSize({
-        width: Math.floor(rect.width),
-        height: Math.floor(rect.height)
+        width: Math.floor(canvasWidth * scaleFactor),
+        height: Math.floor(canvasHeight * scaleFactor)
       });
     }
   }, []);
@@ -379,8 +461,20 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
       updateCanvasSize();
     };
     
+    // Также обновляем при изменении devicePixelRatio (переключение экранов)
+    const handlePixelRatioChange = () => {
+      updateCanvasSize();
+    };
+    
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    window.matchMedia('(resolution: 1dppx)').addEventListener('change', handlePixelRatioChange);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      window.matchMedia('(resolution: 1dppx)').removeEventListener('change', handlePixelRatioChange);
+    };
   }, [updateCanvasSize]);
 
   useEffect(() => {
@@ -435,8 +529,11 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
   }, [drawParallax, isLoaded, targetMousePosition]);
 
   useEffect(() => {
+    const isMobileDevice = detectMobile();
+    setIsMobile(isMobileDevice);
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return;
+      if (!containerRef.current || isMobileDevice) return;
 
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -449,14 +546,58 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
       setTargetMousePosition({ x, y });
     };
 
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (!isMobileDevice) return;
+
+      // Нормализуем значения гироскопа
+      const beta = e.beta || 0; // Поворот вокруг X (вперед-назад)
+      const gamma = e.gamma || 0; // Поворот вокруг Y (влево-вправо)
+      
+      // Запоминаем начальную позицию при первом событии
+      if (!initialOrientation) {
+        setInitialOrientation({ beta, gamma });
+        return; // Не обрабатываем первое событие
+      }
+      
+      // Вычисляем отклонение от начальной позиции
+      const deltaBeta = beta - initialOrientation.beta;
+      const deltaGamma = gamma - initialOrientation.gamma;
+      
+      // Преобразуем углы в координаты для параллакса
+      // Ограничиваем значения и применяем чувствительность
+      const maxAngle = 30; // Максимальный угол поворота
+      
+      // Правильное маппирование:
+      // gamma (влево-вправо) -> x (горизонтальный параллакс)
+      // beta (вперед-назад) -> y (вертикальный параллакс)
+      const x = Math.max(-1, Math.min(1, deltaGamma / maxAngle)) * sensitivity;
+      const y = Math.max(-1, Math.min(1, deltaBeta / maxAngle)) * sensitivity;
+      
+      setTargetMousePosition({ x, y });
+    };
+
     const container = containerRef.current;
     if (container) {
-      container.addEventListener('mousemove', handleMouseMove);
+      if (isMobileDevice) {
+        // Проверяем, нужен ли запрос разрешения
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+          // На iOS 13+ нужно запрашивать разрешение
+          setGyroPermission('unknown');
+        } else {
+          // Для старых браузеров или если API не поддерживается
+          window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+          setGyroPermission('granted');
+        }
+      } else {
+        container.addEventListener('mousemove', handleMouseMove);
+      }
+      
       return () => {
         container.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
       };
     }
-  }, [sensitivity]);
+  }, [sensitivity, detectMobile, initialOrientation]);
 
   // Очистка кэша при размонтировании
   useEffect(() => {
@@ -483,8 +624,10 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
     if (mainImg && depthImg && mainImg.complete && depthImg.complete) {
       if (hasForeground && fgImg && fgDepthImg && fgImg.complete && fgDepthImg.complete) {
         setIsLoaded(true);
+        updateCanvasSize(); // Обновляем размер canvas после загрузки изображений
       } else if (!hasForeground) {
         setIsLoaded(true);
+        updateCanvasSize(); // Обновляем размер canvas после загрузки изображений
       }
     }
   };
@@ -540,13 +683,55 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
         width={canvasSize.width}
         height={canvasSize.height}
         style={{
-          width: '100%',
-          height: '100%',
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
           opacity: isLoaded ? 1 : 0,
-          transition: 'opacity 0.5s ease-in-out'
+          transition: 'opacity 0.5s ease-in-out',
+          width: `${canvasSize.width / (window.devicePixelRatio || 1)}px`,
+          height: `${canvasSize.height / (window.devicePixelRatio || 1)}px`
         }}
       />
 
+      {/* Кнопка активации 3D режима для мобильных */}
+      {isMobile && gyroPermission === 'unknown' && !buttonClicked && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(33.33% + 80px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 15
+        }}>
+          <button
+            onClick={() => {
+              setButtonClicked(true);
+              requestGyroPermission();
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '12px',
+              color: 'white',
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'white';
+            }}
+          >
+            Включить 3D
+          </button>
+        </div>
+      )}
 
       {/* Контент поверх изображения */}
       {children && (
@@ -555,18 +740,6 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
         </div>
       )}
 
-      {/* Градиент для плавного перехода */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '20%',
-          background: 'linear-gradient(to bottom, transparent 0%, var(--color-background) 100%)',
-          pointerEvents: 'none'
-        }}
-      />
     </div>
   );
 };
