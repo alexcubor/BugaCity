@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"dotenv -e .env.dev nodemon server/index.ts\" \"dotenv -e .env.dev webpack --mode development --watch\"",
+    "dev:fast": "concurrently \"dotenv -e .env.dev nodemon server/index.ts\" \"dotenv -e .env.dev webpack --mode development --watch --progress\"",
     "start": "dotenv -e .env ts-node server/index.ts",
     "build": "webpack --mode production",
-    "clean": "rm -rf node_modules dist"
+    "build:dev": "webpack --mode development",
+    "clean": "rm -rf node_modules dist .tsbuildinfo",
+    "type-check": "tsc --noEmit"
   },
   "workspaces": [
     "client",

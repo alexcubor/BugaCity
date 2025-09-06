@@ -7,13 +7,22 @@
     "strict": true,
     "module": "CommonJS",
     "moduleResolution": "node",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": false,
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx"
+    "client/**/*.ts",
+    "client/**/*.tsx",
+    "server/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist",
+    "client/public/bundle.js",
+    "client/public/bundle.js.LICENSE.txt"
   ]
 }

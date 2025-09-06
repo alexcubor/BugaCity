@@ -12,6 +12,7 @@ Thumbs.db
 # Build files
 client/public/bundle.js
 client/public/bundle.js.LICENSE.txt
+client/public/bundle.js.map
 
 # Dependencies
 node_modules/
