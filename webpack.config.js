@@ -7,6 +7,7 @@ module.exports = (env, argv) => {
   const isDevelopment = argv.mode === 'development';
   
   return {
+    mode: isDevelopment ? 'development' : 'production',
     entry: './client/src/index.tsx',
     output: {
       path: path.resolve(__dirname, 'client/public'),
@@ -82,14 +83,14 @@ module.exports = (env, argv) => {
       ignored: [
         '**/node_modules/**',
         '**/.git/**',
-        '**/.DS_Store',
-        '**/client/public/bundle.js',
-        '**/client/public/bundle.js.LICENSE.txt'
+        '**/.DS_Store'
       ],
-      poll: false, // Отключаем polling для лучшей производительности
+      poll: 1000, // Включаем polling для надежности
       aggregateTimeout: 300,
     },
     // Убираем source maps в dev для ускорения
     devtool: isDevelopment ? false : 'source-map',
+    // Явно указываем watch режим для development
+    watch: isDevelopment,
   };
 };

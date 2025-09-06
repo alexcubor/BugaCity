@@ -13,6 +13,7 @@ Thumbs.db
 client/public/bundle.js
 client/public/bundle.js.LICENSE.txt
 client/public/bundle.js.map
+.tsbuildinfo
 
 # Dependencies
 node_modules/
