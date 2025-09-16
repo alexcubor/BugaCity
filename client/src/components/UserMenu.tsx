@@ -10,6 +10,7 @@ interface UserMenuProps {
 }
 
 interface User {
+  _id: string;
   id: string;
   username: string;
   name: string;
@@ -146,12 +147,18 @@ function UserMenu({ onLogout }: UserMenuProps) {
 
   const handleRewardClick = (reward: string) => {
     console.log('User data:', user);
-    console.log('User name:', user?.name);
+    console.log('User ID:', user?.id);
     setSelectedReward(reward);
-    // Обновляем URL
+    // Обновляем URL с ID пользователя для возможности поделиться ссылкой
     const url = new URL(window.location.href);
-    url.searchParams.set('reward', reward);
-    window.history.pushState({}, '', url);
+    if (user?.id) {
+      url.searchParams.set('user', user.id);
+      url.searchParams.set('reward', reward);
+      window.history.pushState({}, '', url);
+      console.log('URL обновлен:', url.toString());
+    } else {
+      console.error('User ID не найден! User object:', user);
+    }
   };
 
   const closeModal = () => {

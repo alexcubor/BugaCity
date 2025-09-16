@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import UserMenu from './UserMenu';
 import SupportButton from './SupportButton';
 import Footer from './Footer';
 import NameInputModal from './NameInputModal';
 import AuthModal from './AuthModal';
 import ParallaxImage from './ParallaxImage';
+import RewardViewer from './RewardViewer/RewardViewer';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -13,6 +14,9 @@ const HomePage: React.FC = () => {
   const [showNameModal, setShowNameModal] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [rewardModalData, setRewardModalData] = useState<{rewardId: string, userName: string} | null>(null);
+  const [rewardsData, setRewardsData] = useState<any[]>([]);
 
   useEffect(() => {
     // Проверяем, есть ли токен в localStorage
@@ -22,9 +26,120 @@ const HomePage: React.FC = () => {
     if (token) {
       loadUserData();
     }
+
+    // Загружаем данные наград
+    loadRewardsData();
+
+    // Проверяем URL параметры для модального окна награды
+    const urlParams = new URLSearchParams(window.location.search);
+    const userParam = urlParams.get('user');
+    const rewardParam = urlParams.get('reward');
+    
+    if (userParam && rewardParam) {
+      // Если userParam выглядит как ID, загружаем данные пользователя
+      if (userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) {
+        fetch(`/api/users/${userParam}`)
+          .then(response => response.ok ? response.json() : null)
+          .then(userData => {
+            if (userData && userData.name) {
+              setRewardModalData({
+                rewardId: rewardParam,
+                userName: userData.name
+              });
+              setShowRewardModal(true);
+            }
+          })
+          .catch(() => {
+            // Если не удалось загрузить пользователя, показываем с ID
+            setRewardModalData({
+              rewardId: rewardParam,
+              userName: userParam
+            });
+            setShowRewardModal(true);
+          });
+      } else {
+        // Если это не ID, показываем как есть
+        setRewardModalData({
+          rewardId: rewardParam,
+          userName: userParam
+        });
+        setShowRewardModal(true);
+      }
+    }
+
   }, []);
 
+  // Загружаем данные наград
+  const loadRewardsData = async () => {
+    try {
+      const response = await fetch('/api/awards');
+      if (response.ok) {
+        const allRewards = await response.json();
+        setRewardsData(allRewards);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных наград:', error);
+    }
+  };
 
+  // Получаем данные выбранной награды
+  const getSelectedRewardData = (rewardId: string) => {
+    return rewardsData.find(reward => reward.id === rewardId) || null;
+  };
+
+  // Единая функция для открытия модального окна награды
+  const openRewardModal = (userParam: string, rewardParam: string) => {
+    if (userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) {
+      // Если это ID, загружаем данные пользователя
+      fetch(`/api/users/${userParam}`)
+        .then(response => response.ok ? response.json() : null)
+        .then(userData => {
+          if (userData && userData.name) {
+            setRewardModalData({
+              rewardId: rewardParam,
+              userName: userData.name
+            });
+            setShowRewardModal(true);
+          }
+        })
+        .catch(() => {
+          setRewardModalData({
+            rewardId: rewardParam,
+            userName: userParam
+          });
+          setShowRewardModal(true);
+        });
+    } else {
+      // Если это не ID, показываем как есть
+      setRewardModalData({
+        rewardId: rewardParam,
+        userName: userParam
+      });
+      setShowRewardModal(true);
+    }
+  };
+
+  // Отслеживаем изменения URL
+  useEffect(() => {
+    const checkUrl = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const userParam = urlParams.get('user');
+      const rewardParam = urlParams.get('reward');
+      
+      if (userParam && rewardParam) {
+        openRewardModal(userParam, rewardParam);
+      } else if (showRewardModal) {
+        setShowRewardModal(false);
+        setRewardModalData(null);
+      }
+    };
+
+    // Проверяем при загрузке и при изменении URL
+    checkUrl();
+    window.addEventListener('popstate', checkUrl);
+    
+    return () => window.removeEventListener('popstate', checkUrl);
+  }, [showRewardModal]);
 
   const loadUserData = async () => {
     console.log('loadUserData вызван');
@@ -135,9 +250,10 @@ const HomePage: React.FC = () => {
         
         // Перенаправляем на страницу с наградой Pioneer
         const url = new URL(window.location.href);
-        url.searchParams.set('reward', 'pioneer');
+        url.searchParams.set('user', userId); // Используем ID пользователя
+        url.searchParams.set('reward', 'pioneer'); // Потом награда
         window.history.pushState({}, '', url);
-        console.log('Перенаправляем на награду Pioneer');
+        console.log('Перенаправляем на награду Pioneer для пользователя ID:', userId);
       } else {
         const errorText = await response.text();
         console.error('Ошибка обновления имени:', errorText);
@@ -150,6 +266,16 @@ const HomePage: React.FC = () => {
   const handleAuthSuccess = (token: string, userId: string) => {
     setIsLoggedIn(true);
     loadUserData();
+  };
+
+  const handleRewardModalClose = () => {
+    setShowRewardModal(false);
+    setRewardModalData(null);
+    // Убираем параметры из URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('user');
+    url.searchParams.delete('reward');
+    window.history.pushState({}, '', url);
   };
 
 
@@ -260,6 +386,33 @@ const HomePage: React.FC = () => {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
+
+               {/* Модальное окно для награды из URL */}
+               {showRewardModal && rewardModalData && (
+                 <Suspense fallback={<div style={{ 
+                   display: 'flex', 
+                   justifyContent: 'center', 
+                   alignItems: 'center', 
+                   height: '400px',
+                   fontSize: '16px',
+                   color: '#666'
+                 }}>Загрузка 3D модели...</div>}>
+                   <RewardViewer
+                     rewardId={rewardModalData.rewardId}
+                     size="large"
+                     autoRotate={true}
+                     isModal={true}
+                     onClose={handleRewardModalClose}
+                     modalTitle={`Награда: ${rewardModalData.rewardId}`}
+                     userName={rewardModalData.userName}
+                     rewardName={getSelectedRewardData(rewardModalData.rewardId)?.name}
+                     rewardPrice={getSelectedRewardData(rewardModalData.rewardId)?.price}
+                     rewardDescription={getSelectedRewardData(rewardModalData.rewardId)?.description}
+                     onLoad={() => {}}
+                     onError={(error: string) => console.error(`Ошибка загрузки ${rewardModalData.rewardId}:`, error)}
+                   />
+                 </Suspense>
+               )}
     </div>
   );
 };

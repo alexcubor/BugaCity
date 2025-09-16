@@ -9,6 +9,9 @@ const SceneEditor = lazy(() => import('./admin/SceneEditor'));
 // Главный компонент с маршрутизацией
 function App() {
   const path = window.location.pathname;
+  const urlParams = new URLSearchParams(window.location.search);
+  const userParam = urlParams.get('user');
+  const rewardParam = urlParams.get('reward');
   
   if (path === '/admin/scene') {
     return (
@@ -23,6 +26,11 @@ function App() {
         <SceneEditor />
       </Suspense>
     );
+  }
+  
+  // Если есть параметр user, показываем HomePage с модальным окном
+  if (userParam) {
+    return <HomePage />;
   }
   
   return <HomePage />;
