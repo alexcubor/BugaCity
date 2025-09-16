@@ -5,10 +5,15 @@
     "dev": "concurrently \"dotenv -e .env.dev nodemon server/index.ts\" \"dotenv -e .env.dev webpack --mode development --watch\"",
     "dev:fast": "concurrently \"dotenv -e .env.dev nodemon server/index.ts\" \"dotenv -e .env.dev webpack --mode development --watch --progress\"",
     "start": "dotenv -e .env ts-node server/index.ts",
-    "build": "webpack --mode production",
-    "build:dev": "webpack --mode development",
-    "clean": "rm -rf node_modules dist .tsbuildinfo",
-    "type-check": "tsc --noEmit"
+    "start:prod": "node dist/server/index.js",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "./node_modules/.bin/webpack --mode production",
+    "build:server": "tsc --project tsconfig.server.json",
+    "build:dev": "npx webpack --mode development",
+    "clean": "rm -rf dist .tsbuildinfo client/public/bundle*",
+    "type-check": "tsc --noEmit",
+    "prebuild": "npm run clean",
+    "copy-assets": "cp -r client/public/images dist/client/public/ && cp -r client/public/models dist/client/public/ && cp -r client/public/textures dist/client/public/"
   },
   "workspaces": [
     "client",
@@ -40,6 +45,7 @@
     "copy-webpack-plugin": "^13.0.1",
     "css-loader": "^7.1.2",
     "dotenv-cli": "^10.0.0",
+    "html-webpack-plugin": "^5.6.4",
     "nodemon": "^3.1.10",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",

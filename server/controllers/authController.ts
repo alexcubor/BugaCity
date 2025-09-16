@@ -1,10 +1,33 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { emailService } from '../emailService';
+import fs from 'fs';
 
 class AuthController {
   // Хранилище временных кодов подтверждения (в продакшене лучше использовать Redis)
   private emailVerificationCodes = new Map<string, { code: string, expires: number }>();
+
+  // Функция для чтения секретов из файлов
+  private readSecret(secretPath: string): string {
+    try {
+      return fs.readFileSync(secretPath, 'utf8').trim();
+    } catch (error) {
+      console.error(`Failed to read secret from ${secretPath}:`, error);
+      return '';
+    }
+  }
+
+  // Получение JWT секрета
+  private getJwtSecret(): string {
+    return (() => {
+          try {
+            return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+          } catch (error) {
+            console.error('Failed to read JWT secret:', error);
+            return process.env.JWT_SECRET || 'secret';
+          }
+        })();
+  }
 
   // Генерация случайного кода
   private generateVerificationCode(): string {
@@ -34,7 +57,11 @@ class AuthController {
     }
 
     // Проверяем, существует ли пользователь с таким email
+    console.log('🔍 Database name:', db.databaseName);
+    console.log('🔍 Collections:', await db.listCollections().toArray());
+    
     const existingUser = await db.collection('users').findOne({ email });
+    console.log('🔍 User exists check:', { email, exists: !!existingUser, user: existingUser });
     
     res.json({ 
       exists: !!existingUser,
@@ -105,7 +132,15 @@ class AuthController {
        
       const user = await db.collection('users').insertOne(userData);
 
-      const token = jwt.sign({ userId: user.insertedId }, 'secret', { expiresIn: '7d' });
+      const jwtSecret = (() => {
+        try {
+          return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+        } catch (error) {
+          console.error('Failed to read JWT secret:', error);
+          return process.env.JWT_SECRET || 'secret';
+        }
+      })();
+      const token = jwt.sign({ userId: user.insertedId }, jwtSecret, { expiresIn: '7d' });
       
       res.json({ 
         token, 
@@ -114,6 +149,7 @@ class AuthController {
         pioneerNumber: 1
       });
     } catch (error) {
+      console.error('❌ Ошибка в register:', error);
       res.status(500).json({ error: 'Ошибка регистрации' });
     }
   }
@@ -129,7 +165,8 @@ class AuthController {
       
       const user = await db.collection('users').findOne({ email });
       if (!user) {
-        return res.status(400).json({ error: 'Неверные данные' });
+        console.log('❌ User not found in database');
+        return res.status(400).json({ error: 'Пользователя с таким email не существует' });
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -137,7 +174,15 @@ class AuthController {
         return res.status(400).json({ error: 'Неверные данные' });
       }
 
-      const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
+      const jwtSecret = (() => {
+        try {
+          return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+        } catch (error) {
+          console.error('Failed to read JWT secret:', error);
+          return process.env.JWT_SECRET || 'secret';
+        }
+      })();
+      const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '7d' });
       res.json({ token, userId: user._id });
     } catch (error) {
       res.status(500).json({ error: 'Ошибка входа' });
@@ -155,7 +200,14 @@ class AuthController {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         client_id: process.env.VK_CLIENT_ID || '',
-        client_secret: process.env.VK_CLIENT_SECRET || '',
+        client_secret: (() => {
+          try {
+            return fs.readFileSync('/run/secrets/vk_secret', 'utf8').trim();
+          } catch (error) {
+            console.error('Failed to read VK secret:', error);
+            return process.env.VK_CLIENT_SECRET || '';
+          }
+        })(),
         redirect_uri: redirectUri,
         code: code
       })
@@ -183,6 +235,21 @@ class AuthController {
     const redirectUri = host?.includes('localhost') || host?.includes('tuna.am')
       ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
       : 'https://gluko.city/api/auth/callback';
+    // Читаем секреты из файлов
+    const yandexClientId = process.env.YANDEX_CLIENT_ID || '';
+    const yandexClientSecret = (() => {
+      try {
+        return fs.readFileSync('/run/secrets/yandex_secret', 'utf8').trim();
+      } catch (error) {
+        console.error('Failed to read Yandex secret:', error);
+        return process.env.YANDEX_CLIENT_SECRET || '';
+      }
+    })();
+    
+    console.log('🔍 Environment variables:', { 
+      YANDEX_CLIENT_ID: yandexClientId ? 'SET' : 'NOT SET',
+      YANDEX_CLIENT_SECRET: yandexClientSecret ? 'SET' : 'NOT SET'
+    });
       
     const response = await fetch('https://oauth.yandex.ru/token', {
       method: 'POST',
@@ -190,15 +257,17 @@ class AuthController {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        client_id: process.env.YANDEX_CLIENT_ID || '',
-        client_secret: process.env.YANDEX_CLIENT_SECRET || '',
+        client_id: yandexClientId,
+        client_secret: yandexClientSecret,
         redirect_uri: redirectUri
       })
     });
     
     const data = await response.json();
+    console.log('🔍 Yandex OAuth response:', data);
     
     if (data.error) {
+      console.error('❌ Yandex OAuth error:', data);
       throw new Error(`Yandex OAuth error: ${data.error_description || data.error}`);
     }
     
@@ -222,16 +291,24 @@ class AuthController {
 
       const db = req.app.locals.db;
       
-      // Ищем пользователя только по email
+      // VK может не предоставить email, используем ID для идентификации
+      const vkId = userData.id;
+      
+      // Ищем пользователя по VK ID или email (если есть)
       let user = await db.collection('users').findOne({
-        email: userData.email
+        $or: [
+          { vkId: vkId },
+          { email: userData.email }
+        ]
       });
 
       if (!user) {
         // Автоматически регистрируем пользователя, если его нет в базе
         const result = await db.collection('users').insertOne({
           name: userData.first_name + ' ' + userData.last_name,
-          email: userData.email,
+          username: `vk_${vkId}`, // Создаем уникальное имя пользователя для VK
+          email: userData.email || `vk_${vkId}@vk.local`, // Если email нет, создаем временный
+          vkId: vkId,
           glukocoins: 0,
           rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
         });
@@ -239,14 +316,29 @@ class AuthController {
         user = await db.collection('users').findOne({ _id: result.insertedId });
         
         // Перенаправляем на награду для нового пользователя
-        res.json({ token: jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' }), user, isNewUser: true });
+        res.json({ token: jwt.sign({ userId: user._id }, (() => {
+          try {
+            return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+          } catch (error) {
+            console.error('Failed to read JWT secret:', error);
+            return process.env.JWT_SECRET || 'secret';
+          }
+        })(), { expiresIn: '7d' }), user, isNewUser: true });
         return;
       }
 
-      const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user._id }, (() => {
+          try {
+            return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+          } catch (error) {
+            console.error('Failed to read JWT secret:', error);
+            return process.env.JWT_SECRET || 'secret';
+          }
+        })(), { expiresIn: '7d' });
       
       res.json({ token, user });
     } catch (error) {
+      console.error('❌ Ошибка в handleVKCallback:', error);
       res.status(500).json({ error: 'Ошибка сервера' });
     }
   }
@@ -263,8 +355,7 @@ class AuthController {
   }
 
   async handleOAuthCallback(req: any, res: any) {
-    try {
-      const { code, state } = req.query;
+    try {const { code, state } = req.query;
       const [provider, action] = state.split('_'); // yandex_login или yandex_register
       
       if (provider === 'yandex') {
@@ -285,6 +376,7 @@ class AuthController {
           const result = await db.collection('users').insertOne({
             name: userData.name,
             email: userData.email,
+            username: userData.email.split('@')[0], // Используем часть email как username
             glukocoins: 0,
             rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
           });
@@ -292,7 +384,14 @@ class AuthController {
           user = await db.collection('users').findOne({ _id: result.insertedId });
           
           // Перенаправляем на награду для нового пользователя
-          const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
+          const token = jwt.sign({ userId: user._id }, (() => {
+          try {
+            return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+          } catch (error) {
+            console.error('Failed to read JWT secret:', error);
+            return process.env.JWT_SECRET || 'secret';
+          }
+        })(), { expiresIn: '7d' });
           const origin = req.headers.origin || 'https://gluko-city.ru.tuna.am';
           
           res.send(`
@@ -313,7 +412,14 @@ class AuthController {
           return;
         }
 
-        const token = jwt.sign({ userId: user._id }, 'secret', { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user._id }, (() => {
+          try {
+            return fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
+          } catch (error) {
+            console.error('Failed to read JWT secret:', error);
+            return process.env.JWT_SECRET || 'secret';
+          }
+        })(), { expiresIn: '7d' });
         
         // Возвращаем HTML страницу, которая отправит сообщение в родительское окно
         const origin = req.headers.origin || 'https://gluko-city.ru.tuna.am';
@@ -336,6 +442,7 @@ class AuthController {
         res.status(400).json({ error: 'Неизвестный провайдер' });
       }
     } catch (error) {
+      console.error('❌ OAuth callback error:', error);
       res.status(500).json({ error: 'Ошибка сервера' });
     }
   }

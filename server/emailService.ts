@@ -1,17 +1,28 @@
 import nodemailer from 'nodemailer';
+import fs from 'fs';
 
 class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    // Функция для чтения секретов из файлов
+    const readSecret = (secretPath: string): string => {
+      try {
+        return fs.readFileSync(secretPath, 'utf8').trim();
+      } catch (error) {
+        console.error(`Failed to read secret from ${secretPath}:`, error);
+        return '';
+      }
+    };
+
     // Создаем транспортер для отправки email через ваш SMTP сервер
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.jino.ru',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false, // Для порта 587 используем STARTTLS
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: true, // Для порта 465 используем SSL
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        pass: readSecret('/run/secrets/smtp_password_new') || process.env.SMTP_PASS
       }
     });
   }

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import RewardViewer from './RewardViewer';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './UserMenu.css';
 import './RewardViewer/RewardViewer.css';
+
+// Ленивая загрузка RewardViewer (Babylon.js загрузится только когда открывается награда)
+const RewardViewer = lazy(() => import('./RewardViewer'));
 
 interface UserMenuProps {
   onLogout: () => void;
@@ -221,20 +223,29 @@ function UserMenu({ onLogout }: UserMenuProps) {
 
       {/* Модальное окно с 3D Viewer */}
       {selectedReward && user?.name && (
-        <RewardViewer
-          rewardId={selectedReward}
-          size="large"
-          autoRotate={true}
-          isModal={true}
-          onClose={closeModal}
-          modalTitle={`Награда: ${selectedReward}`}
-          userName={user.name}
-          rewardName={getSelectedRewardData()?.name}
-          rewardPrice={getSelectedRewardData()?.price}
-          rewardDescription={getSelectedRewardData()?.description}
-          onLoad={() => {}}
-          onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
-        />
+        <Suspense fallback={<div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '400px',
+          fontSize: '16px',
+          color: '#666'
+        }}>Загрузка 3D модели...</div>}>
+          <RewardViewer
+            rewardId={selectedReward}
+            size="large"
+            autoRotate={true}
+            isModal={true}
+            onClose={closeModal}
+            modalTitle={`Награда: ${selectedReward}`}
+            userName={user.name}
+            rewardName={getSelectedRewardData()?.name}
+            rewardPrice={getSelectedRewardData()?.price}
+            rewardDescription={getSelectedRewardData()?.description}
+            onLoad={() => {}}
+            onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
+          />
+        </Suspense>
       )}
     </div>
   );

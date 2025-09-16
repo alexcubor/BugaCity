@@ -157,10 +157,10 @@ const HomePage: React.FC = () => {
   return (
     <div>
       <ParallaxImage
-        mainImage="/images/glukograd_bg.png"
-        depthMap="/images/glukograd_bg_depth.png"
+        mainImage="/images/glukograd_bg.jpg"
+        depthMap="/images/glukograd_bg_depth.jpg"
         foregroundImage="/images/glukograd_fg.png"
-        foregroundDepthMap="/images/glukograd_fg_depth.png"
+        foregroundDepthMap="/images/glukograd_fg_depth.jpg"
         intensity={3.0}
         minOffset={-100}
         maxOffset={200}
@@ -172,7 +172,10 @@ const HomePage: React.FC = () => {
           <div className="login-button-container">
             <button
               className="login-button"
-              onClick={() => setShowAuthModal(true)}
+              onClick={() => {
+                console.log('Login button clicked, opening AuthModal');
+                setShowAuthModal(true);
+              }}
             >
               ВОЙТИ
             </button>

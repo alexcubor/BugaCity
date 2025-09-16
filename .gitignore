@@ -2,6 +2,9 @@
 .env
 .env.dev
 
+# Docker secrets
+secrets/
+
 # IDE
 .idea/
 
@@ -10,15 +13,10 @@
 Thumbs.db
 
 # Build files
-client/public/bundle.js
-client/public/bundle.js.LICENSE.txt
-client/public/bundle.js.map
+dist/
+client/public/
 .tsbuildinfo
 
 # Dependencies
 node_modules/
 package-lock.json
-
-# Images and assets
-client/public/*.png
-client/public/*.svg

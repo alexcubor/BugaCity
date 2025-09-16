@@ -150,7 +150,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
       ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
       : 'https://gluko.city/api/auth/callback';
     
-                 const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${config.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_${isLogin ? 'login' : 'register'}`;
+    const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${config.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_${isLogin ? 'login' : 'register'}`;
     
     // Открываем окно авторизации
     const popup = window.open(yandexAuthUrl, 'social_auth', 'width=600,height=600');

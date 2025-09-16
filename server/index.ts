@@ -3,13 +3,21 @@ import { MongoClient } from 'mongodb';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import awardRoutes from './routes/awards';
 
-// Загружаем переменные окружения
-dotenv.config({ path: '.env.dev' });
+// Переменные окружения загружаются через Docker Compose
+
+// Функция для чтения секретов из файлов
+function readSecret(secretPath: string): string {
+  try {
+    return fs.readFileSync(secretPath, 'utf8').trim();
+  } catch (error) {
+    console.error(`Failed to read secret from ${secretPath}:`, error);
+    return '';
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,11 +29,13 @@ app.use(express.static(path.join(process.cwd(), 'client/public')));
 
 
 // MongoDB подключение
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/social_network';
+// Читаем пароль MongoDB из секрета
+const mongodbPassword = readSecret('/run/secrets/mongodb_password_v2') || 'password123';
+const mongoUri = `mongodb://admin:${mongodbPassword}@mongodb:27017/glukograd?authSource=admin`;
 
 MongoClient.connect(mongoUri)
   .then(client => {
-    const db = client.db();
+    const db = client.db('glukograd');
     app.locals.db = db; // Сохраняем db в app.locals для доступа в контроллерах
     console.log('Connected to MongoDB');
   })
@@ -40,7 +50,13 @@ app.use('/api/awards', awardRoutes);
 
 // Главная страница
 app.get('/', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'client/public/index.html'));
+  const htmlPath = path.join(process.cwd(), 'client/public/index.html');
+  // Принудительно читаем файл каждый раз заново
+  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.send(htmlContent);
 });
 
 // Страница входа
