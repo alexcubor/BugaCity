@@ -36,7 +36,6 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      MONGODB_URI: mongodb://admin:${MONGODB_PASSWORD}@mongodb:27017/glukograd?authSource=admin
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
       SMTP_HOST: smtp.jino.ru
