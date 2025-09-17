@@ -10,14 +10,14 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
-    ports:
-      - "27017:27017"
+    # ports:
+      # - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongodb_password_v2
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongodb_password
       MONGO_INITDB_DATABASE: glukograd
     secrets:
-      - mongodb_password_v2
+      - mongodb_password
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
@@ -52,9 +52,9 @@ services:
       - vk_secret
       - yandex_secret
       - smtp_password_new
-      - mongodb_password_v2
-    ports:
-      - "3001:3001"
+      - mongodb_password
+    # ports:
+      # - "3001:3001"
     depends_on:
       - mongodb
     networks:
@@ -94,5 +94,5 @@ secrets:
     external: true
   smtp_password_new:
     external: true
-  mongodb_password_v2:
+  mongodb_password:
     external: true

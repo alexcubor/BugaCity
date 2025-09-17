@@ -159,11 +159,20 @@ class AuthController {
       const { email, password } = req.body;
       const db = req.app.locals.db;
       
+      console.log('🔍 Login attempt - Full request body:', req.body);
+      console.log('🔍 Login attempt - Email:', email, 'Password length:', password?.length);
+      
       if (!db) {
+        console.log('❌ Database not connected in login');
         return res.status(500).json({ error: 'Database not connected' });
       }
       
+      console.log('🔍 Database name in login:', db.databaseName);
+      console.log('🔍 Collections in login:', await db.listCollections().toArray());
+      
       const user = await db.collection('users').findOne({ email });
+      console.log('🔍 User search result:', { email, found: !!user, user });
+      
       if (!user) {
         console.log('❌ User not found in database');
         return res.status(400).json({ error: 'Пользователя с таким email не существует' });

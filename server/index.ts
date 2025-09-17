@@ -30,7 +30,7 @@ app.use(express.static(path.join(process.cwd(), 'client/public')));
 
 // MongoDB подключение
 // Читаем пароль MongoDB из секрета
-const mongodbPassword = readSecret('/run/secrets/mongodb_password_v2') || 'password123';
+const mongodbPassword = readSecret('/run/secrets/mongodb_password') || 'password123';
 const mongoUri = `mongodb://admin:${mongodbPassword}@mongodb:27017/glukograd?authSource=admin`;
 
 MongoClient.connect(mongoUri)

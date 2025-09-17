@@ -206,6 +206,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 Frontend - handleSubmit called:', { isLogin, email, password: password?.length });
+    
     // Проверяем совпадение паролей при регистрации
     if (!isLogin && password !== confirmPassword) {
       alert('Пароли не совпадают');
@@ -214,6 +216,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     
     const url = isLogin ? '/api/auth/login' : '/api/auth/register';
     const data = isLogin ? { email, password } : { email, password, verificationCode };
+    
+    console.log('🔍 Frontend - Sending data:', data);
     
     try {
       const response = await fetch(url, {
