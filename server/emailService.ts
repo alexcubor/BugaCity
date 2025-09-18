@@ -22,7 +22,7 @@ class EmailService {
       secure: true, // Для порта 465 используем SSL
       auth: {
         user: process.env.SMTP_USER,
-        pass: readSecret('/run/secrets/smtp_password_new') || process.env.SMTP_PASS
+        pass: readSecret('/run/secrets/smtp_password')
       }
     });
   }

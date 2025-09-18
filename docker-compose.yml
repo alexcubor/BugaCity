@@ -41,7 +41,7 @@ services:
       SMTP_HOST: smtp.jino.ru
       SMTP_PORT: 465
       SMTP_USER: hello@gluko.city
-      SMTP_PASS_FILE: /run/secrets/smtp_password_new
+      SMTP_PASS_FILE: /run/secrets/smtp_password
       VK_CLIENT_ID: 54075494
       VK_CLIENT_SECRET_FILE: /run/secrets/vk_secret
       YANDEX_CLIENT_ID: 03e35996472d40e3b0d980943e545cb8
@@ -51,7 +51,7 @@ services:
       - jwt_secret
       - vk_secret
       - yandex_secret
-      - smtp_password_new
+      - smtp_password
       - mongodb_password
     # ports:
       # - "3001:3001"
@@ -92,7 +92,7 @@ secrets:
     external: true
   yandex_secret:
     external: true
-  smtp_password_new:
+  smtp_password:
     external: true
   mongodb_password:
     external: true

@@ -83,19 +83,19 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/jpeg",
 			"name":"Normal",
-			"uri":"Normal.png"
+			"uri":"Normal.jpg"
 		},
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/jpeg",
 			"name":"BaseColor",
-			"uri":"BaseColor.png"
+			"uri":"BaseColor.jpg"
 		},
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/jpeg",
 			"name":"Metallic-Roughness",
-			"uri":"Metallic-Roughness.png"
+			"uri":"Metallic-Roughness.jpg"
 		}
 	],
 	"accessors":[
