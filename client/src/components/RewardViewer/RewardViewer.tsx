@@ -3,19 +3,15 @@ import {
   Engine, 
   Scene, 
   Vector3, 
-  HemisphericLight, 
   ArcRotateCamera,
   SceneLoader,
-  AbstractMesh,
   Mesh,
   Color4,
   DynamicTexture,
-  MeshUVSpaceRenderer,
   MeshBuilder,
   StandardMaterial,
   Color3,
   HDRCubeTexture,
-  Texture,
   TransformNode
 } from '@babylonjs/core';
 import { GLTFFileLoader } from '@babylonjs/loaders';
@@ -40,6 +36,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   rewardPrice,
   rewardDescription
 }) => {
+  
   // Логика работы с URL для модального окна и отключение скролла
   useEffect(() => {
     if (isModal && onClose) {
@@ -97,9 +94,38 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     // Устанавливаем прозрачный фон
     scene.clearColor = new Color4(0, 0, 0, 0);
     
-    // Принудительно устанавливаем размер canvas
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Устанавливаем размер canvas в зависимости от режима
+    
+    if (isModal) {
+      // В модальном режиме делаем canvas квадратным на основе viewport
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const minDimension = Math.min(viewportWidth, viewportHeight);
+      
+      // Canvas занимает 80% от минимального размера viewport, но не меньше 300px и не больше 600px
+      const canvasSize = Math.max(300, Math.min(600, Math.floor(minDimension * 0.8)));
+      
+      // Увеличиваем разрешение canvas для четкости на высоких DPI экранах
+      const pixelRatio = window.devicePixelRatio || 1;
+      canvas.width = canvasSize * pixelRatio;
+      canvas.height = canvasSize * pixelRatio;
+      canvas.style.width = canvasSize + 'px';
+      canvas.style.height = canvasSize + 'px';
+    } else {
+      // В обычном режиме используем размер контейнера, но делаем квадратным
+      const container = canvas.parentElement;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const containerSize = Math.min(rect.width, rect.height);
+        
+        // Увеличиваем разрешение canvas для четкости на высоких DPI экранах
+        const pixelRatio = window.devicePixelRatio || 1;
+        canvas.width = containerSize * pixelRatio;
+        canvas.height = containerSize * pixelRatio;
+        canvas.style.width = containerSize + 'px';
+        canvas.style.height = containerSize + 'px';
+      }
+    }
     
     engineRef.current = engine;
     sceneRef.current = scene;
@@ -115,19 +141,161 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     );
     
     camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 0.5;
-    camera.upperRadiusLimit = 20;
-    camera.fov = 0.8;
+    
+    // Полностью отключаем ВСЕ стандартные входы камеры
+    camera.inputs.removeByType("ArcRotateCameraMouseWheelInput");
+    camera.inputs.removeByType("ArcRotateCameraPointersInput");
+    camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
+    camera.inputs.removeByType("ArcRotateCameraGamepadInput");
+    
+    // Создаем полностью кастомный обработчик только для одиночного касания
+    let isDragging = false;
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+    
+    // Переменные для инерции
+    let velocityX = 0;
+    let velocityY = 0;
+    let lastTime = 0;
+    let animationId: number | null = null;
+    
+    const handlePointerDown = (evt: PointerEvent) => {
+      if (evt.pointerType === 'touch' && evt.pointerId !== undefined) {
+        // Для тач-устройств разрешаем только одиночное касание
+        const touches = (evt.target as any).touches || [];
+        if (touches.length > 1) {
+          evt.preventDefault();
+          return false;
+        }
+      }
+      
+      // Останавливаем инерцию при новом касании
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      velocityX = 0;
+      velocityY = 0;
+      
+      isDragging = true;
+      lastPointerX = evt.clientX;
+      lastPointerY = evt.clientY;
+      lastTime = Date.now();
+      evt.preventDefault();
+      return false;
+    };
+    
+    const handlePointerMove = (evt: PointerEvent) => {
+      if (!isDragging) return;
+      
+      // Блокируем все мультитач жесты
+      if (evt.pointerType === 'touch') {
+        const touches = (evt.target as any).touches || [];
+        if (touches.length > 1) {
+          isDragging = false;
+          evt.preventDefault();
+          return false;
+        }
+      }
+      
+      const currentTime = Date.now();
+      const deltaTime = currentTime - lastTime;
+      const deltaX = evt.clientX - lastPointerX;
+      const deltaY = evt.clientY - lastPointerY;
+      
+      // Рассчитываем скорость для инерции
+      if (deltaTime > 0) {
+        velocityX = deltaX / deltaTime;
+        velocityY = deltaY / deltaTime;
+      }
+      
+      // Только горизонтальное вращение вокруг оси Y (влево-вправо), блокируем вертикальное вращение
+      camera.alpha -= deltaX * 0.01; // Горизонтальное вращение (влево-вправо)
+      // camera.beta += deltaY * 0.01;  // ЗАБЛОКИРОВАНО - вертикальное вращение
+      
+      
+      lastPointerX = evt.clientX;
+      lastPointerY = evt.clientY;
+      lastTime = currentTime;
+      evt.preventDefault();
+      return false;
+    };
+    
+    const handlePointerUp = (evt: PointerEvent) => {
+      isDragging = false;
+      
+      // Запускаем инерцию если есть скорость
+      if (Math.abs(velocityX) > 1.0 || Math.abs(velocityY) > 1.0) {
+        const friction = 1.0; // Коэффициент трения (0.98 = очень медленное замедление)
+        const minVelocity = 0.001; // Минимальная скорость для остановки
+        
+        const animateInertia = () => {
+          // Применяем трение
+          velocityX *= friction;
+          velocityY *= friction;
+          
+          // Вращаем камеру с инерцией (увеличиваем чувствительность)
+          camera.alpha -= velocityX * 0.02;
+          
+          // Продолжаем анимацию если скорость еще достаточная
+          if (Math.abs(velocityX) > minVelocity || Math.abs(velocityY) > minVelocity) {
+            animationId = requestAnimationFrame(animateInertia);
+          } else {
+            animationId = null;
+          }
+        };
+        
+        animationId = requestAnimationFrame(animateInertia);
+      }
+      
+      evt.preventDefault();
+      return false;
+    };
+    
+    // Добавляем обработчики событий
+    canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
+    canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
+    canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
+    
+    // Блокируем все остальные события
+    canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    camera.lowerRadiusLimit = 0.5; // Минимальное расстояние - очень близко
+    camera.upperRadiusLimit = 1.0; // Максимальное расстояние - близко
+    camera.fov = 0.4; // Уменьшаем поле зрения для большего приближения
     camera.minZ = 0.1;
+    
+    // Полностью отключаем все способы управления камерой кроме вращения
+    camera.panningSensibility = 0; // Отключаем панорамирование мышью
+    camera.wheelPrecision = 0; // Отключаем зум колесиком мыши
+    camera.pinchPrecision = 0; // Отключаем зум пинчем на тач-устройствах
+    camera.allowUpsideDown = false; // Запрещаем переворачивание
+    camera.useNaturalPinchZoom = false; // Отключаем естественный зум пинчем
+    camera.pinchToPanMaxDistance = 0; // Отключаем панорамирование пинчем
+    camera.angularSensibilityX = 3000; // Еще больше замедляем горизонтальное вращение
+    camera.angularSensibilityY = 3000; // Еще больше замедляем вертикальное вращение
+    
+    // Дополнительные настройки для полной блокировки
+    camera.inertia = 0; // Отключаем инерцию
+    camera.panningInertia = 0; // Отключаем инерцию панорамирования
+    camera.panningAxis = new Vector3(0, 0, 0); // Блокируем ось панорамирования
 
+    // Улучшаем качество рендеринга
+    engine.setHardwareScalingLevel(1 / window.devicePixelRatio); // Учитываем DPI для четкости
+    
     // Создаем HDR освещение
     const envTexture = new HDRCubeTexture('/textures/environment/studio.hdr', scene, 512);
     scene.environmentTexture = envTexture;
     scene.environmentIntensity = 1.0;
 
-    // Применяем настройки постобработки из SceneEditor
-    scene.imageProcessingConfiguration!.exposure = 0.5;
-    scene.imageProcessingConfiguration!.contrast = 2.2;
+    // Применяем настройки постобработки из SceneEditor - увеличиваем контраст
+    scene.imageProcessingConfiguration!.exposure = 0.6; // Немного увеличиваем экспозицию
+    scene.imageProcessingConfiguration!.contrast = 2.5; // Увеличиваем контраст
     scene.imageProcessingConfiguration!.toneMappingEnabled = true;
     scene.imageProcessingConfiguration!.toneMappingType = 0;
 
@@ -138,12 +306,13 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     }
 
     // Загружаем 3D модель
-    const modelPath = `/models/rewards/${rewardId}/${rewardId}.gltf`;
+    const rootUrl = `/models/rewards/${rewardId}/`;
+    const fileName = `${rewardId}.gltf`;
     
     SceneLoader.ImportMesh(
       '',
-      '',
-      modelPath,
+      rootUrl,
+      fileName,
       scene,
       (meshes) => {
         // Центрируем модель
@@ -151,44 +320,45 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
           const rootMesh = meshes[0];
           if (rootMesh instanceof Mesh) {
             
-            // Масштабируем модель в зависимости от размера
-            const scale = size === 'small' ? 0.5 : size === 'large' ? 2 : 1;
+            // Масштабируем модель в зависимости от размера - увеличиваем для лучшей видимости
+            const scale = size === 'small' ? 0.8 : size === 'large' ? 2.5 : 1.2;
             rootMesh.scaling = new Vector3(-scale, scale, scale); // Отрицательный X для отражения по горизонтали
             
             // Начинаем с ограниченной видимости
             camera.minZ = 0.1; // Ограничиваем ближнюю видимость
             camera.maxZ = 2; // Ограничиваем дальнюю видимость
-            
-
-
 
 
             // Ищем дочерний меш для декали
             let targetMesh = rootMesh;
+            
             for (let child of rootMesh.getChildren(undefined, false)) {
-              if (child instanceof Mesh && (child.name === 'shape')) {
-                targetMesh = child;
-                break;
+              if (child instanceof Mesh) {
+                // Пробуем найти меш с именем 'shape' или любой другой меш
+                if (child.name === 'shape' || child.name.includes('shape') || child.name.includes('medal') || child.name.includes('badge')) {
+                  targetMesh = child;
+                  break;
+                }
               }
             }
 
             // Создаем комбинированную текстуру с настоящим SVG и именем пользователя
-            const combinedTexture = new DynamicTexture('combinedTexture', 2048, scene);
+            const combinedTexture = new DynamicTexture(`combinedTexture_${Date.now()}`, 2048, scene);
             const textureContext = combinedTexture.getContext() as CanvasRenderingContext2D;
             
             // Настройки для лучшего качества рендеринга
             textureContext.imageSmoothingEnabled = true;
             textureContext.imageSmoothingQuality = 'high';
             
-            // Прозрачный фон
-            textureContext.clearRect(0, 0, 2048, 2048);
-            
+            // Прозрачный фон - не заливаем ничего, чтобы не влиять на контраст медали
+            // textureContext.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Убираем фон
+            // textureContext.fillRect(0, 0, 2048, 2048);
             
             // Сохраняем текущее состояние контекста
             textureContext.save();
             
             // Перемещаем в правый нижний угол и поворачиваем на 30 градусов
-            textureContext.translate(1130, 1250); // Смещаем в правый нижний угол (увеличенные координаты для 2048x2048)
+            textureContext.translate(1130, 1250); // Смещаем в правый нижний угол
             textureContext.rotate(-30 * Math.PI / 180); // -30 градусов (по часовой стрелке)
             
             // Рисуем имя пользователя сверху
@@ -210,18 +380,29 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             // Обновляем текстуру
             combinedTexture.update();
 
-            // Создаем decalMap и рендерим декаль
+            // Пробуем создать декаль стандартным способом Babylon.js
             if (targetMesh.getTotalVertices() > 0 && targetMesh.material) {
-              targetMesh.decalMap = new MeshUVSpaceRenderer(targetMesh, scene, {width: 4096, height: 4096});
               
-              const material = targetMesh.material as any;
-              if (material.decalMap) {
-                material.decalMap.smoothAlpha = true;
-                material.decalMap.isEnabled = true;
-              }
-
-              // Рендерим комбинированную декаль
-              targetMesh.decalMap.renderTexture(combinedTexture, new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(0.4, 0.4, 0.4));
+              // Создаем материал для декали с правильными настройками
+              const decalMaterial = new StandardMaterial(`decalMaterial_${Date.now()}`, scene);
+              decalMaterial.diffuseTexture = combinedTexture;
+              decalMaterial.diffuseTexture.hasAlpha = true;
+              decalMaterial.zOffset = -2;
+              decalMaterial.backFaceCulling = true; // Включаем culling для одной стороны
+              decalMaterial.alpha = 1.0; // Полная непрозрачность
+              decalMaterial.useAlphaFromDiffuseTexture = true; // Используем альфа из текстуры
+              
+              // Создаем декаль стандартным способом
+              const decal = MeshBuilder.CreateDecal(`decal_${Date.now()}`, targetMesh, {
+                position: new Vector3(0, 0, 0),
+                normal: new Vector3(0, 0, 1),
+                size: new Vector3(0.5, 0.5, 0.5),
+                angle: 0,
+                cullBackFaces: true // Включаем culling для одной стороны
+              });
+              
+              decal.material = decalMaterial;
+              decal.visibility = 1.0; // Принудительно делаем видимой
             }
             
             // Создаем родительский объект для автоматического вращения
@@ -246,8 +427,8 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
           }
 
           // Анимация приближения и вращения камеры
-          const startRadius = 5;
-          const endRadius = 0.5;
+          const startRadius = 5; // Начинаем издалека (как в конструкторе)
+          const endRadius = 0.8; // Очень близко к модели
           const startAlpha = camera.alpha;
           const endAlpha = startAlpha + 2 * Math.PI; // Полный оборот
           const animationDuration = 1000; // 1 секунда
@@ -267,13 +448,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             // Вращение камеры вокруг модели с отскоком в конце
             let currentAlpha = startAlpha + (endAlpha - startAlpha) * easeProgress;
             
-            // Добавляем отскок по вращению в последние 20% анимации (после полного приближения)
-            // if (progress > 0.8) {
-            //   const bounceProgress = (progress - 0.8) / 0.2; // 0 до 1 в последние 20%
-            //   // Один плавный отскок
-            //   const bounce = Math.sin(bounceProgress * Math.PI) * 0.1 * (1 - bounceProgress);
-            //   currentAlpha += bounce;
-            // }
             
             camera.alpha = currentAlpha;
             
@@ -286,8 +460,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             }
           };
 
-
-
           // Запускаем анимацию камеры через небольшую задержку
           setTimeout(animateCamera, 500);
         }
@@ -296,11 +468,8 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
           onLoad();
         }
       },
-      (progress) => {
-        // Прогресс загрузки (можно убрать)
-      },
+      undefined, // Прогресс загрузки не нужен
       (error) => {
-        console.error('Ошибка загрузки 3D модели:', error);
         if (onError) {
           onError(`Ошибка загрузки модели: ${error.toString()}`);
         }
@@ -314,6 +483,37 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
 
     // Обработка изменения размера окна
     const handleResize = () => {
+      
+      if (isModal) {
+        // В модальном режиме делаем canvas квадратным на основе viewport
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const minDimension = Math.min(viewportWidth, viewportHeight);
+        
+        // Canvas занимает 80% от минимального размера viewport, но не меньше 300px и не больше 600px
+        const canvasSize = Math.max(300, Math.min(600, Math.floor(minDimension * 0.8)));
+        
+        // Увеличиваем разрешение canvas для четкости на высоких DPI экранах
+        const pixelRatio = window.devicePixelRatio || 1;
+        canvas.width = canvasSize * pixelRatio;
+        canvas.height = canvasSize * pixelRatio;
+        canvas.style.width = canvasSize + 'px';
+        canvas.style.height = canvasSize + 'px';
+      } else {
+        // В обычном режиме используем размер контейнера, но делаем квадратным
+        const container = canvas.parentElement;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const containerSize = Math.min(rect.width, rect.height);
+          
+          // Увеличиваем разрешение canvas для четкости на высоких DPI экранах
+          const pixelRatio = window.devicePixelRatio || 1;
+          canvas.width = containerSize * pixelRatio;
+          canvas.height = containerSize * pixelRatio;
+          canvas.style.width = containerSize + 'px';
+          canvas.style.height = containerSize + 'px';
+        }
+      }
       engine.resize();
     };
     window.addEventListener('resize', handleResize);
@@ -321,6 +521,25 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     return () => {
       // Очистка при размонтировании
       window.removeEventListener('resize', handleResize);
+      
+      // Останавливаем анимацию инерции
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      
+      // Удаляем кастомные обработчики событий
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('wheel', (e) => e.preventDefault());
+      canvas.removeEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+      });
+      canvas.removeEventListener('touchmove', (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+      });
+      
       if (engineRef.current) {
         engineRef.current.dispose();
       }
@@ -329,8 +548,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       }
     };
   }, [rewardId, size, autoRotate, onLoad, onError]);
-
-
 
   // Если это модальное окно, рендерим с модальной оберткой
   if (isModal) {

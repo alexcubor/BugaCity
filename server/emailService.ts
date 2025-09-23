@@ -2,29 +2,31 @@ import nodemailer from 'nodemailer';
 import fs from 'fs';
 
 class EmailService {
-  private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter | null = null;
 
-  constructor() {
-    // Функция для чтения секретов из файлов
-    const readSecret = (secretPath: string): string => {
-      try {
-        return fs.readFileSync(secretPath, 'utf8').trim();
-      } catch (error) {
-        console.error(`Failed to read secret from ${secretPath}:`, error);
-        return '';
-      }
-    };
+  private getTransporter(): nodemailer.Transporter {
+    if (this.transporter) {
+      return this.transporter;
+    }
 
-    // Создаем транспортер для отправки email через ваш SMTP сервер
+    // Читаем пароль из переменной или из файла (для Docker secrets)
+    let smtpPassword = process.env.SMTP_PASS;
+    if (process.env.SMTP_PASS_FILE && fs.existsSync(process.env.SMTP_PASS_FILE)) {
+      smtpPassword = fs.readFileSync(process.env.SMTP_PASS_FILE, 'utf8').trim();
+    }
+
+    // Простая конфигурация SMTP из переменных окружения
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.jino.ru',
       port: parseInt(process.env.SMTP_PORT || '465'),
       secure: true, // Для порта 465 используем SSL
       auth: {
         user: process.env.SMTP_USER,
-        pass: readSecret('/run/secrets/smtp_password')
+        pass: smtpPassword
       }
     });
+
+    return this.transporter!;
   }
 
   async sendVerificationEmail(email: string, code: string): Promise<void> {
@@ -75,7 +77,8 @@ class EmailService {
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      const transporter = this.getTransporter();
+      await transporter.sendMail(mailOptions);
       console.log(`✅ Email отправлен на ${email}`);
     } catch (error) {
       console.error('❌ Ошибка отправки email:', error);
@@ -86,7 +89,8 @@ class EmailService {
   // Тестовая функция для проверки подключения
   async testConnection(): Promise<boolean> {
     try {
-      await this.transporter.verify();
+      const transporter = this.getTransporter();
+      await transporter.verify();
       console.log('✅ SMTP подключение успешно');
       return true;
     } catch (error) {

@@ -1,0 +1,16 @@
+{
+  "watch": [
+    "server/**/*",
+    "client/**/*"
+  ],
+  "ext": "ts,tsx,js,jsx,css,json",
+  "ignore": [
+    "node_modules/**/*",
+    "dist/**/*",
+    "client/public/**/*"
+  ],
+  "exec": "ts-node server/index.ts",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

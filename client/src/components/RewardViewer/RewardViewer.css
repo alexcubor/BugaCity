@@ -42,10 +42,10 @@
 
 .modal-canvas {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100% !important;
-  height: 100% !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Размеры устанавливаются через JavaScript */
 }
 
 /* Стили для надписей поверх canvas */
@@ -93,4 +93,16 @@
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   text-align: center;
   margin-top: 4px;
+}
+
+/* Квадратный canvas для мобильных устройств */
+@media (max-width: 768px) {
+  .modal-canvas {
+    width: 400px !important;
+    height: 400px !important;
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
 }

@@ -19,7 +19,7 @@ services:
     secrets:
       - mongodb_password
     volumes:
-      - mongodb_data:/data/db
+      - mongo_prod_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - glukograd-network
@@ -36,8 +36,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      MONGODB_URI: mongodb://glukograd_user:glukograd_password@mongodb:27017/glukograd?authSource=glukograd
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
+      # Включаем чтение пароля Mongo из Docker secret и подключение по DNS-имени сервиса
+      MONGODB_PASSWORD_FILE: /run/secrets/mongodb_password
       SMTP_HOST: smtp.jino.ru
       SMTP_PORT: 465
       SMTP_USER: hello@gluko.city
@@ -79,7 +82,9 @@ services:
       - glukograd-network
 
 volumes:
-  mongodb_data:
+  mongo_prod_data:
+    external: true
+    name: mongodb_data
 
 networks:
   glukograd-network:
