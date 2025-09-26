@@ -34,9 +34,11 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
       // Инициализация конфигурации
       VKID.Config.init({
         app: config.VK_CLIENT_ID,
-        redirectUrl: window.location.hostname === 'localhost' || window.location.hostname.includes('tuna.am')
-          ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
-          : 'https://gluko.city/api/auth/callback',
+        redirectUrl: window.location.hostname === 'localhost' 
+          ? 'http://localhost:3000/api/auth/callback'
+          : window.location.hostname.includes('tuna.am')
+            ? `${window.location.protocol}//${window.location.host}/api/auth/callback`
+            : 'https://gluko.city/api/auth/callback',
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,
         scope: '',
@@ -146,9 +148,11 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
 
   const handleYandexLogin = () => {
     // URL для OAuth авторизации Яндекса
-    const redirectUri = window.location.hostname === 'localhost' || window.location.hostname.includes('tuna.am')
-      ? 'https://gluko-city.ru.tuna.am/api/auth/callback'
-      : 'https://gluko.city/api/auth/callback';
+    const redirectUri = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000/api/auth/callback'
+      : window.location.hostname.includes('tuna.am')
+        ? `${window.location.protocol}//${window.location.host}/api/auth/callback`
+        : 'https://gluko.city/api/auth/callback';
     
     const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${config.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_${isLogin ? 'login' : 'register'}`;
     

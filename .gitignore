@@ -20,3 +20,6 @@ client/public/
 # Dependencies
 node_modules/
 package-lock.json
+
+# Browser profile
+browser-profile/

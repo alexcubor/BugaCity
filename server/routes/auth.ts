@@ -24,4 +24,7 @@ router.post('/vk-callback', authController.handleVKCallback);
 // VK user info
 router.get('/vk-user', authController.getVKUser);
 
+// Delete user
+router.post('/delete-user', authController.deleteUser);
+
 export default router;
