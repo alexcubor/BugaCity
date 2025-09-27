@@ -20,7 +20,7 @@ services:
       - mongo_prod_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
-      - glukograd-network
+      - bugacity-network
 
   # Application
   app:
@@ -57,25 +57,22 @@ services:
     depends_on:
       - mongodb
     networks:
-      - glukograd-network
-    volumes:
-      - ./client/public:/app/client/public:ro
+      - bugacity-network
 
   # Nginx Reverse Proxy (опционально)
   nginx:
     image: nginx:alpine
-    container_name: glukograd-nginx
+    container_name: bugacity-nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - app
     networks:
-      - glukograd-network
+      - bugacity-network
 
 volumes:
   mongo_prod_data:
@@ -83,7 +80,7 @@ volumes:
     name: mongodb_data
 
 networks:
-  glukograd-network:
+  bugacity-network:
     external: true
 
 secrets:
