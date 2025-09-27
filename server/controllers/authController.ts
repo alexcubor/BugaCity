@@ -210,8 +210,12 @@ class AuthController {
 
   private async exchangeVKCode(code: string, host?: string) {
     // Обмен кода на токен ВКонтакте
-    // Для разработки всегда используем тоннель
-    const redirectUri = 'https://bugacity-npm.ru.tuna.am/api/auth/callback';
+    // Динамически определяем redirect URI на основе host
+    const redirectUri = host && host.includes('bugacity-docker.ru.tuna.am') 
+      ? 'https://bugacity-docker.ru.tuna.am/api/auth/callback'
+      : host && host.includes('gluko.city')
+        ? 'https://gluko.city/api/auth/callback'
+        : 'https://bugacity-npm.ru.tuna.am/api/auth/callback';
       
     const response = await fetch('https://oauth.vk.com/access_token', {
       method: 'POST',
@@ -243,11 +247,24 @@ class AuthController {
 
   async exchangeYandexCode(code: string, host?: string) {
     // Обмен кода на токен Яндекса
-    // Для разработки всегда используем тоннель
-    const redirectUri = 'https://bugacity-npm.ru.tuna.am/api/auth/callback';
+    console.log('🔍 exchangeYandexCode вызван с параметрами:', { code, host });
+    
+    // Динамически определяем redirect URI на основе host
+    const redirectUri = host && host.includes('bugacity-docker.ru.tuna.am') 
+      ? 'https://bugacity-docker.ru.tuna.am/api/auth/callback'
+      : host && host.includes('gluko.city')
+        ? 'https://gluko.city/api/auth/callback'
+        : 'https://bugacity-npm.ru.tuna.am/api/auth/callback';
+    
+    console.log('🔍 Используем redirectUri:', redirectUri);
     // Читаем секреты из файлов
     const yandexClientId = authController.getYandexClientId();
     const yandexClientSecret = authController.getYandexSecret();
+    
+    console.log('🔍 Секреты получены:', { 
+      clientId: yandexClientId ? '***' : 'НЕ НАЙДЕН', 
+      clientSecret: yandexClientSecret ? '***' : 'НЕ НАЙДЕН' 
+    });
       
     const response = await fetch('https://oauth.yandex.ru/token', {
       method: 'POST',
@@ -261,7 +278,9 @@ class AuthController {
       })
     });
     
+    console.log('🔍 Запрос к Yandex API отправлен, статус:', response.status);
     const data = await response.json();
+    console.log('🔍 Ответ от Yandex API:', data);
     
     if (data.error) {
       console.error('❌ Yandex OAuth error:', data);
@@ -274,10 +293,13 @@ class AuthController {
     }
     
     // Получаем информацию о пользователе
+    console.log('🔍 Получаем данные пользователя от Yandex...');
     const userResponse = await fetch('https://login.yandex.ru/info', {
       headers: { 'Authorization': `OAuth ${data.access_token}` }
     });
+    console.log('🔍 Статус ответа от Yandex user info:', userResponse.status);
     const userData = await userResponse.json();
+    console.log('🔍 Данные пользователя от Yandex:', userData);
     
     return {
       id: userData.id,
@@ -353,6 +375,13 @@ class AuthController {
 
   async handleOAuthCallback(req: any, res: any) {
     try {
+      console.log('🔍 OAuth callback получен:', {
+        url: req.url,
+        method: req.method,
+        headers: req.headers,
+        query: req.query
+      });
+      
       const { code, state } = req.query;
       
       if (!state) {
@@ -364,21 +393,28 @@ class AuthController {
       }
       
       const [provider, action] = state.split('_'); // yandex_login или yandex_register
+      console.log(`🔍 Обрабатываем OAuth callback: provider=${provider}, action=${action}`);
       
       if (provider === 'yandex') {
+        console.log('🔍 Начинаем обработку Yandex OAuth...');
         const userData = await authController.exchangeYandexCode(code, req.headers.host);
+        console.log('🔍 Данные пользователя получены:', userData);
         
         const db = req.app.locals.db;
         if (!db) {
           throw new Error('Database connection failed');
         }
+        console.log('🔍 База данных подключена');
         
         // Ищем пользователя только по email
+        console.log('🔍 Ищем пользователя в базе данных по email:', userData.email);
         let user = await db.collection('users').findOne({
           email: userData.email
         });
+        console.log('🔍 Результат поиска пользователя:', user ? 'найден' : 'не найден');
 
         if (!user) {
+          console.log('🔍 Создаем нового пользователя...');
           // Автоматически регистрируем пользователя
           const result = await db.collection('users').insertOne({
             name: userData.name,
@@ -391,8 +427,14 @@ class AuthController {
           user = await db.collection('users').findOne({ _id: result.insertedId });
           
           // Перенаправляем на награду для нового пользователя
+          console.log('🔍 Генерируем JWT токен для нового пользователя...');
           const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
-          const origin = req.headers.origin || 'https://bugacity-npm.ru.tuna.am';
+          const origin = req.headers.origin || (req.headers.host && req.headers.host.includes('bugacity-docker.ru.tuna.am') 
+            ? 'https://bugacity-docker.ru.tuna.am' 
+            : req.headers.host && req.headers.host.includes('gluko.city')
+              ? 'https://gluko.city'
+              : 'https://bugacity-npm.ru.tuna.am');
+          console.log('🔍 JWT токен сгенерирован, origin:', origin);
           
           res.send(`
             <html>
@@ -412,10 +454,16 @@ class AuthController {
           return;
         }
 
+        console.log('🔍 Генерируем JWT токен для существующего пользователя...');
         const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
         
         // Возвращаем HTML страницу, которая отправит сообщение в родительское окно
-        const origin = req.headers.origin || 'https://bugacity-npm.ru.tuna.am';
+        const origin = req.headers.origin || (req.headers.host && req.headers.host.includes('bugacity-docker.ru.tuna.am') 
+          ? 'https://bugacity-docker.ru.tuna.am' 
+          : req.headers.host && req.headers.host.includes('gluko.city')
+            ? 'https://gluko.city'
+            : 'https://bugacity-npm.ru.tuna.am');
+        console.log('🔍 JWT токен сгенерирован для существующего пользователя, origin:', origin);
         
         res.send(`
           <html>
@@ -458,7 +506,11 @@ class AuthController {
           user = await db.collection('users').findOne({ _id: result.insertedId });
           
           const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
-          const origin = req.headers.origin || 'https://bugacity-npm.ru.tuna.am';
+          const origin = req.headers.origin || (req.headers.host && req.headers.host.includes('bugacity-docker.ru.tuna.am') 
+            ? 'https://bugacity-docker.ru.tuna.am' 
+            : req.headers.host && req.headers.host.includes('gluko.city')
+              ? 'https://gluko.city'
+              : 'https://bugacity-npm.ru.tuna.am');
           
           res.send(`
             <html>

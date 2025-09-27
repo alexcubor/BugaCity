@@ -20,8 +20,6 @@ services:
   # Application
   app:
     image: bugacity:latest
-    ports:
-      - "3001:3001"
     deploy:
       replicas: 1
       restart_policy:
@@ -30,7 +28,7 @@ services:
         max_attempts: 3
     environment:
       NODE_ENV: development
-      PORT: 3001
+      PORT: 80
       MONGODB_URI: mongodb://glukograd_user:glukograd_password@bugacity_mongodb:27017/glukograd?authSource=glukograd
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
