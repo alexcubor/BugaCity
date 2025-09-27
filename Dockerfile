@@ -39,15 +39,15 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nextjs:nodejs /app/client/public ./client/public
 
+# Переключаемся на непривилегированного пользователя
+USER nextjs
+
 # Открываем порт
-EXPOSE 80
+EXPOSE 3001
 
 # Устанавливаем переменные окружения
 ENV NODE_ENV=production
-ENV PORT=80
-
-# Запускаем под root для доступа к порту 80
-# USER nextjs
+ENV PORT=3001
 
 # Команда запуска
 CMD ["node", "dist/server/index.js"]
