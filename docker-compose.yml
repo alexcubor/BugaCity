@@ -59,7 +59,7 @@ services:
     networks:
       - bugacity-network
 
-  # Nginx Reverse Proxy (опционально)
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
     container_name: bugacity-nginx
