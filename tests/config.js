@@ -5,7 +5,10 @@ require('dotenv').config();
 module.exports = {
   // API конфигурация
   api: {
-    baseUrl: process.env.TEST_API_URL || 'https://bugacity-npm.ru.tuna.am'
+    baseUrl: process.env.TEST_API_URL || 'https://bugacity-npm.ru.tuna.am',
+    npmUrl: 'https://bugacity-npm.ru.tuna.am',
+    dockerUrl: 'https://bugacity-docker.ru.tuna.am',
+    prodUrl: 'https://gluko.city'
   },
   
   // Настройки браузера
