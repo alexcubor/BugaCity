@@ -114,6 +114,7 @@ async function testYandexLogin(page) {
       // Проверяем, что URL содержит наш домен (не остались на Yandex)
       if (!currentUrl.includes('bugacity-docker.ru.tuna.am') && 
           !currentUrl.includes('bugacity-npm.ru.tuna.am') && 
+          !currentUrl.includes('gluko.city') &&
           !currentUrl.includes('localhost')) {
         console.log('❌ Не находимся на главной странице приложения');
         return false;

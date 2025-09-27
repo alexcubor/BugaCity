@@ -78,10 +78,35 @@ async function testVKLogin(page) {
     
     console.log('🔵 Нажимаем кнопку "Разрешить" на странице VK...');
     try {
-      await vkPage.click('#root > div > div > div > div.vkc__Authorize__container > div.vkc__Authorize__actions > div.vkuiButtonGroup.vkuiButtonGroup--mode-vertical.vkuiButtonGroup--gap-m.vkuiButtonGroup--stretched.vkuiButtonGroup--align-left.vkuiRootComponent > button.vkuiButton.vkuiButton--size-l.vkuiButton--mode-primary.vkuiButton--appearance-accent.vkuiButton--align-center.vkuiButton--sizeY-none.vkuiButton--stretched.vkuiTappable.vkuiTappable--sizeX-none.vkuiTappable--hasPointer-none.vkuiClickable__resetButtonStyle.vkuiClickable__host.vkuiClickable__realClickable.vkui-focus-visible.vkuiRootComponent');
+      // Пробуем несколько способов найти кнопку "Разрешить"
+      let buttonClicked = false;
+      
+      // Основной способ: Поиск по тексту "Разрешить"
+      try {
+        await vkPage.click('text="Разрешить"', { timeout: 5000 });
+        buttonClicked = true;
+        console.log('✅ Кнопка "Разрешить" найдена по тексту');
+      } catch (e) {
+        console.log('⚠️ Кнопка "Разрешить" не найдена по тексту, пробуем fallback...');
+        
+        // Fallback: Поиск по классу кнопки
+        try {
+          await vkPage.click('button.vkuiButton--mode-primary', { timeout: 3000 });
+          buttonClicked = true;
+          console.log('✅ Кнопка "Разрешить" найдена по классу');
+        } catch (e2) {
+          console.log('⚠️ Кнопка "Разрешить" не найдена по классу');
+        }
+      }
+      
+      if (!buttonClicked) {
+        throw new Error('Не удалось найти кнопку "Разрешить"');
+      }
+      
       console.log('✅ Кнопка "Разрешить" нажата');
     } catch (error) {
       console.log('❌ Не удалось найти кнопку "Разрешить" на странице VK');
+      console.log('❌ Ошибка:', error.message);
       await vkPage.close();
       return false;
     }

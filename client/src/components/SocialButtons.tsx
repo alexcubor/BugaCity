@@ -20,6 +20,9 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
 
     // Инициализация VK ID SDK
   useEffect(() => {
+    // Временно отключаем VK SDK
+    return;
+    
     // Добавляем небольшую задержку для гарантии загрузки SDK
     const timer = setTimeout(() => {
       if (!window.VKIDSDK || !vkContainerRef.current) return;
@@ -195,7 +198,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
         >
           <img src="/images/yandex-icon.svg" alt="Яндекс" />
         </button>
-        <div ref={vkContainerRef} className="social-btn" />
+        {/* <div ref={vkContainerRef} className="social-btn" /> */}
       </div>
     </div>
   );
