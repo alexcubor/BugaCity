@@ -1,81 +1,76 @@
 .user-menu {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 0;
+  right: 0;
   z-index: 21;
 }
 
-.user-menu button {
+.user-menu > button {
   background: none;
+  padding: 30px 50px 10px 30px;
+}
+
+.user-menu > button:not(:zero-child) {
+  background: var(--color-secondary);
+}
+
+.user-menu button {
   border: none;
-  padding: 8px 16px;
-  color: var(--color-text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  transition: background-color 0.2s;
+  gap: 20px;
+  text-align: right;
 }
 
-.user-menu button:hover {
-  color: var(--color-surface);
+@media (orientation: portrait) {
+  .user-menu button {
+    padding: 15px 30px;
+  }
+  .user-menu button span {
+    display: none;
+  }
+}
+
+.user-menu > button:hover {
   background: none;
 }
 
-.widget {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: var(--color-surface-dark);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 200px;
-  z-index: 22;
-  margin-top: 8px;
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.user-menu img:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s;
+}
+
+.user-menu .widget {
+  padding: 6px;
+  margin: 0px 45px 0px 0px;
 }
 
 .widget > div {
-  display: flex;
   justify-content: flex-end;
   flex-direction: column;
 }
 
 /* Стиль для блока с наградами */
 .rewards-section {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
   padding: 6px;
-  display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
 .rewards-section button {
   background: none;
   border: none;
-  color: white;
-  font-size: 14px;
   text-align: right;
   cursor: default;
   padding: 4px 8px;
   margin: 0;
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
 }
 
-.rewards-section .rewards-container {
-  display: flex;
-  justify-content: flex-end;
+.rewards-container {
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 4px;
+  padding: 5px;
 }
 
 .widget img {
@@ -88,26 +83,20 @@
 }
 
 .widget img:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
+  transition: transform 0.2s;
 }
 
 .widget button {
   border-radius: 6px;
   color: var(--color-text-secondary);
-  cursor: pointer;
   font-size: 14px;
   transition: background-color 0.2s;
-  text-align: right;
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
-.widget button:hover {
-  color: var(--color-text-primary);
-}
-
-/* Стили для социальных кнопок как на странице логина */
 .social-buttons {
   flex-direction: row;
   gap: 12px;
@@ -132,4 +121,3 @@
   height: 100%;
   border-radius: 12px;
 }
-

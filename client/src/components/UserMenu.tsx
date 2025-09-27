@@ -185,15 +185,14 @@ function UserMenu({ onLogout }: UserMenuProps) {
       {/* Кнопка с аватаром */}
       <button onClick={toggleMenu}>
         <span>{user?.name || 'Пользователь'}</span>
-        <img src="/images/user_icon.svg" alt="User" width="20" height="20" />
+        <img src="/images/user_icon.svg" alt="User" width="40" height="40" />
       </button>
 
       {/* Выпадающее меню */}
       {isOpen && (
         <div className="widget">
           {/* Блок с наградами */}
-          <div className="rewards-section">
-            <button>Награды</button>
+          <div>
             <div className="rewards-container">
               {loading ? (
                 <span>Загрузка...</span>
@@ -220,11 +219,9 @@ function UserMenu({ onLogout }: UserMenuProps) {
           </div>
 
           {/* Меню действий */}
-          <div className="rewards-section">
             <button onClick={handleLogout}>
               Выйти
             </button>
-          </div>
         </div>
       )}
 

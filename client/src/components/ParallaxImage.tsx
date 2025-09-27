@@ -696,16 +696,7 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
         ref={canvasRef}
         width={canvasSize.width}
         height={canvasSize.height}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          opacity: isLoaded ? 1 : 0,
-          transition: 'opacity 0.5s ease-in-out',
-          width: `${canvasSize.width / (window.devicePixelRatio || 1)}px`,
-          height: `${canvasSize.height / (window.devicePixelRatio || 1)}px`
-        }}
+        className={`parallax-canvas ${isLoaded ? 'loaded' : ''}`}
       />
 
       {/* Кнопка активации 3D режима для мобильных */}

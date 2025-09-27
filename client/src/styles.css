@@ -1,8 +1,8 @@
 :root {
   /* Основные цвета */
-  --color-primary: #E20048;
-  --color-primary-hover: #1A1EB2;
-  --color-secondary: #FFBE00;
+  --color-primary: #1f1e20;
+  --color-primary-hover: #c4c4c832;
+  --color-secondary: #242424;
   
   /* Фоновые цвета */
   --color-background: #0b0a07;
@@ -152,6 +152,8 @@ canvas:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 200px;
   z-index: 2;
+  position: absolute;
+  flex-direction: column;
 }
 
 .modal-overlay {

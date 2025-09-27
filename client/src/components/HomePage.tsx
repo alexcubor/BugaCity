@@ -338,9 +338,7 @@ const HomePage: React.FC = () => {
               className="logo"
             />
           </div>
-          <nav>
             {isLoggedIn && <UserMenu onLogout={handleLogout} />}
-          </nav>
         </header>
 
         <section style={{
