@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Engine, 
   Scene, 
@@ -37,6 +37,9 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   rewardDescription
 }) => {
   console.log('🔍 RewardViewer props:', { rewardId, rewardName, rewardPrice, rewardDescription });
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   
   // Логика работы с URL для модального окна и отключение скролла
   useEffect(() => {
@@ -136,7 +139,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     // Создаем камеру
     const camera = new ArcRotateCamera(
       'camera',
-      1.5 * Math.PI, // alpha - горизонтальный угол (270°)
+      0, // alpha - горизонтальный угол (0°) - вид сзади
       Math.PI / 2,   // beta - вертикальный угол (90°)
       5,             // radius - начинаем издалека
       Vector3.Zero(),
@@ -325,6 +328,10 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     const rootUrl = `/models/rewards/${rewardId}/`;
     const fileName = `${rewardId}.gltf`;
     
+    // Сбрасываем состояние загрузки
+    setIsLoading(true);
+    setLoadingError(null);
+    
     SceneLoader.ImportMesh(
       '',
       rootUrl,
@@ -429,7 +436,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             camera.parent = cameraParent;
             
             // Автоматическое вращение родительского объекта
-            const rotationSpeed = 0.0001; // Медленное вращение
+            const rotationSpeed = 0.0002; // Медленное вращение
             let rotationAngle = 0;
             
             const animateParentRotation = () => {
@@ -446,38 +453,41 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
           const startRadius = 5; // Начинаем издалека (как в конструкторе)
           const endRadius = 0.8; // Очень близко к модели
           const startAlpha = camera.alpha;
-          const endAlpha = startAlpha + 2 * Math.PI; // Полный оборот
-          const animationDuration = 1000; // 1 секунда
+          const endAlpha = startAlpha - Math.PI / 2; // Поворот на -90° в другую сторону
+          const animationDuration = 1500; // 1.5 секунды для более плавной анимации
           const startTime = Date.now();
 
           const animateCamera = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / animationDuration, 1);
             
-            // Кривая: быстрое начало, плавное замедление в конце
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            // Более плавная кривая: медленное начало, плавное ускорение, плавное замедление
+            const easeProgress = progress < 0.5 
+              ? 2 * progress * progress 
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
             
             // Приближение камеры
             const currentRadius = startRadius + (endRadius - startRadius) * easeProgress;
             camera.radius = currentRadius;
             
-            // Вращение камеры вокруг модели с отскоком в конце
-            let currentAlpha = startAlpha + (endAlpha - startAlpha) * easeProgress;
-            
-            
+            // Плавное вращение камеры
+            const currentAlpha = startAlpha + (endAlpha - startAlpha) * easeProgress;
             camera.alpha = currentAlpha;
             
             // Анимация расширения видимости
-            camera.minZ = 0.01 + (0.1 - 0.01) * (1 - easeProgress); // Расширяем ближнюю видимость
-            camera.maxZ = 10 + (2 - 10) * (1 - easeProgress); // Расширяем дальнюю видимость
+            camera.minZ = 0.01 + (0.1 - 0.01) * (1 - easeProgress);
+            camera.maxZ = 10 + (2 - 10) * (1 - easeProgress);
             
             if (progress < 1) {
               requestAnimationFrame(animateCamera);
+            } else {
+              // Анимация завершена, скрываем кружочек загрузки
+              setIsLoading(false);
             }
           };
 
-          // Запускаем анимацию камеры через небольшую задержку
-          setTimeout(animateCamera, 500);
+          // Запускаем анимацию камеры сразу
+          animateCamera();
         }
         
         if (onLoad) {
@@ -486,6 +496,10 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       },
       undefined, // Прогресс загрузки не нужен
       (error) => {
+        // Ошибка загрузки
+        setIsLoading(false);
+        setLoadingError(`Ошибка загрузки модели: ${error.toString()}`);
+        
         if (onError) {
           onError(`Ошибка загрузки модели: ${error.toString()}`);
         }
@@ -575,6 +589,22 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             className="modal-canvas" 
             onClick={(e) => e.stopPropagation()}
           />
+          
+          {/* Кружочек загрузки */}
+          {isLoading && (
+            <div className="loading-spinner" onClick={(e) => e.stopPropagation()}>
+              <div className="spinner"></div>
+            </div>
+          )}
+          
+          {/* Сообщение об ошибке */}
+          {loadingError && (
+            <div className="loading-error" onClick={(e) => e.stopPropagation()}>
+              <div className="error-icon">⚠️</div>
+              <div className="error-text">{loadingError}</div>
+            </div>
+          )}
+          
           {/* Информация о награде поверх canvas */}
           <div className="modal-reward-info" onClick={(e) => e.stopPropagation()}>
             <div className="modal-reward-title">
@@ -583,7 +613,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             <div className="modal-reward-description">
               {rewardPrice && (
                 <div className="modal-reward-price">
-                  🪙 {rewardPrice} Глюкоинов
+                  {rewardPrice} Глюкоинов
                 </div>
               )}
               {rewardDescription && (
@@ -600,8 +630,23 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
 
   // Обычный рендер без модального окна
   return (
-    <div data-size={size}>
+    <div data-size={size} style={{ position: 'relative' }}>
       <canvas ref={canvasRef} />
+      
+      {/* Кружочек загрузки */}
+      {isLoading && (
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+        </div>
+      )}
+      
+      {/* Сообщение об ошибке */}
+      {loadingError && (
+        <div className="loading-error">
+          <div className="error-icon">⚠️</div>
+          <div className="error-text">{loadingError}</div>
+        </div>
+      )}
     </div>
   );
 };
