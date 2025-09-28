@@ -131,20 +131,84 @@
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Квадратный canvas для мобильных устройств */
+/* Оптимизация для мобильных устройств */
 @media (max-width: 768px) {
+  .modal-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
   .modal-canvas {
-    width: 400px !important;
-    height: 400px !important;
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%) !important;
+    width: 280px !important;
+    height: 280px !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin-bottom: 20px;
+  }
+  
+  .modal-reward-info {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    width: 100%;
+    max-width: 320px;
+  }
+  
+  .modal-reward-title {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  .modal-reward-price {
+    font-size: 16px;
+  }
+  
+  .modal-reward-description-text {
+    font-size: 14px;
+    line-height: 1.4;
   }
   
   .spinner {
     width: 32px;
     height: 32px;
     border-width: 3px;
+  }
+}
+
+/* Дополнительная оптимизация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .modal-container {
+    padding: 15px;
+  }
+  
+  .modal-canvas {
+    width: 240px !important;
+    height: 240px !important;
+    margin-bottom: 15px;
+  }
+  
+  .modal-reward-info {
+    max-width: 280px;
+  }
+  
+  .modal-reward-title {
+    font-size: 20px;
+  }
+  
+  .modal-reward-price {
+    font-size: 14px;
+  }
+  
+  .modal-reward-description-text {
+    font-size: 13px;
   }
 }

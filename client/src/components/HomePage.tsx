@@ -100,7 +100,11 @@ const HomePage: React.FC = () => {
     console.log('🔍 openRewardModal called with:', { userParam, rewardParam });
     console.log('🔍 rewardsData length:', rewardsData.length);
     
-    if (userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) {
+    // Проверяем, является ли это ID пользователя (MongoDB ObjectId или числовой ID)
+    const isMongoId = userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam);
+    const isNumericId = /^[0-9]+$/.test(userParam) && userParam.length >= 8;
+    
+    if (isMongoId || isNumericId) {
       // Если это ID, загружаем данные пользователя
       fetch(`/api/users/${userParam}`)
         .then(response => response.ok ? response.json() : null)
@@ -109,6 +113,13 @@ const HomePage: React.FC = () => {
             setRewardModalData({
               rewardId: rewardParam,
               userName: userData.name
+            });
+            setShowRewardModal(true);
+          } else {
+            // Если имя не найдено, используем ID
+            setRewardModalData({
+              rewardId: rewardParam,
+              userName: userParam
             });
             setShowRewardModal(true);
           }

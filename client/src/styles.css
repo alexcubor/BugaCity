@@ -184,3 +184,10 @@ canvas:focus {
     -webkit-backdrop-filter: blur(8px);
   }
 }
+
+/* Класс для шрифта Bad Script */
+.bad-script-regular {
+  font-family: "Bad Script", cursive;
+  font-weight: 400;
+  font-style: normal;
+}

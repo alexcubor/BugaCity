@@ -386,13 +386,13 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             
             // Рисуем имя пользователя сверху
             textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
-            textureContext.font = '400 98px "Dancing Script", "Marck Script", "Brush Script MT", cursive';
+            textureContext.font = '400 68px "Bad Script", cursive';
             textureContext.textAlign = 'center';
             textureContext.textBaseline = 'middle';
             textureContext.fillText(userName, 0, -50);
             
             textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
-            textureContext.font = '400 72px "Dancing Script", "Marck Script", "Brush Script MT", cursive';
+            textureContext.font = '400 42px "Bad Script", cursive';
             textureContext.textAlign = 'center';
             textureContext.textBaseline = 'middle';
             textureContext.fillText('· Среди первых ·', 0, 50);
