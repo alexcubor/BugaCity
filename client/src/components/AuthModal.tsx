@@ -216,6 +216,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     }
   };
 
+  const handleBack = () => {
+    if (showConfirmPassword) {
+      setShowConfirmPassword(false);
+    } else if (showPassword) {
+      setShowPassword(false);
+    } else if (showVerification) {
+      setShowVerification(false);
+    }
+  };
+
   const handleSocialSuccess = (data: any) => {
     console.log('Social login success:', data);
   };
@@ -301,6 +311,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   value={email}
                   onChange={handleEmailChange}
                   onInput={handleEmailInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && email) {
+                      e.currentTarget.blur();
+                      handleNextStep();
+                    }
+                  }}
                   required
                 />
               </div>
@@ -323,6 +339,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                     type="text"
                     value={verificationCode}
                     onChange={handleVerificationCodeChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && verificationCode) {
+                        e.currentTarget.blur();
+                        handleVerificationNext();
+                      }
+                    }}
                     placeholder="Введите код из email"
                     required
                   />
@@ -359,6 +381,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                     type="password"
                     value={password}
                     onChange={handlePasswordChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && password) {
+                        e.currentTarget.blur();
+                        if (isLogin) {
+                          e.preventDefault();
+                          handleSubmit(e);
+                        } else {
+                          handlePasswordNext();
+                        }
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -402,6 +435,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && confirmPassword) {
+                        e.currentTarget.blur();
+                        e.preventDefault();
+                        handleSubmit(e);
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -430,26 +470,73 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
               Далее
             </button>
           ) : showVerification && !showPassword ? (
-            <button 
-              type="button" 
-              onClick={handleVerificationNext}
-              disabled={!verificationCode}
-            >
-              Далее
-            </button>
-          ) : showPassword && !showConfirmPassword ? (
-            isLogin ? (
-              <button type="submit">
-                Войти
-              </button>
-            ) : (
+            <div style={{ flexDirection: 'row', gap: '10px', alignItems: 'center' }}>
               <button 
                 type="button" 
-                onClick={handlePasswordNext}
-                disabled={!password}
+                onClick={handleBack}
+                style={{
+                  width: '40px', 
+                  minWidth: '40px',
+                  flexShrink: 0
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                </svg>
+              </button>
+              <button 
+                type="button" 
+                onClick={handleVerificationNext}
+                disabled={!verificationCode}
+                style={{ flex: '1' }}
               >
                 Далее
               </button>
+            </div>
+          ) : showPassword && !showConfirmPassword ? (
+            isLogin ? (
+              <div style={{ flexDirection: 'row', gap: '10px', alignItems: 'center' }}>
+                <button 
+                  type="button" 
+                  onClick={handleBack}
+                  style={{
+                    width: '40px', 
+                    minWidth: '40px',
+                    flexShrink: 0
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                  </svg>
+                </button>
+                <button type="submit" style={{ flex: '1' }}>
+                  Войти
+                </button>
+              </div>
+            ) : (
+              <div style={{ flexDirection: 'row', gap: '10px', alignItems: 'center' }}>
+                <button 
+                  type="button" 
+                  onClick={handleBack}
+                  style={{
+                    width: '40px', 
+                    minWidth: '40px',
+                    flexShrink: 0
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                  </svg>
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handlePasswordNext}
+                  disabled={!password}
+                  style={{ flex: '1' }}
+                >
+                  Далее
+                </button>
+              </div>
             )
           ) : (
             <button type="submit">

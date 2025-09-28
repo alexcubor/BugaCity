@@ -644,7 +644,7 @@ class AuthController {
     }
   }
 
-  // Метод для удаления пользователя (для тестов)
+  // Метод для удаления пользователя
   async deleteUser(req: any, res: any) {
     try {
       const { email } = req.body;
@@ -658,9 +658,32 @@ class AuthController {
         return res.status(500).json({ error: 'База данных не подключена' });
       }
 
+      // Сначала находим пользователя, чтобы получить его ID
+      const user = await db.collection('users').findOne({ email });
+      
+      if (!user) {
+        return res.json({ message: 'Пользователь не найден', deletedCount: 0 });
+      }
+
+      // Удаляем пользователя из базы данных
       const result = await db.collection('users').deleteOne({ email });
       
       if (result.deletedCount > 0) {
+        // Удаляем папку пользователя
+        try {
+          const userId = user._id.toString();
+          const relativePath = `users/${userId.substring(0, 8).padStart(8, '0')}/${userId}`;
+          const fullPath = path.join(process.cwd(), 'uploads', relativePath);
+          
+          if (fs.existsSync(fullPath)) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            console.log(`✅ Папка пользователя удалена: ${fullPath}`);
+          }
+        } catch (dirError) {
+          console.error('⚠️ Ошибка при удалении папки пользователя:', dirError);
+          // Не прерываем выполнение, если не удалось удалить папку
+        }
+        
         res.json({ message: 'Пользователь удален', deletedCount: result.deletedCount });
       } else {
         res.json({ message: 'Пользователь не найден', deletedCount: 0 });

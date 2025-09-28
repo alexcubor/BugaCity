@@ -85,36 +85,36 @@ async function testEmailRegistration(page, email, password) {
     await page.click('#root > div > div.auth-modal-overlay > div > button:nth-child(4)');
     await page.waitForTimeout(500);
     
-    // Шаг 1: Заполняем email и нажимаем "Далее"
+    // Шаг 1: Заполняем email и нажимаем Enter
     console.log('📝 Шаг 1: Заполняем email...');
     await page.fill('#root > div > div.auth-modal-overlay > div > form > div > div > input[type=email]', email);
     
-    console.log('➡️ Нажимаем кнопку "Далее"...');
-    await page.click('#root > div > div.auth-modal-overlay > div > form > button');
+    console.log('⌨️ Нажимаем Enter...');
+    await page.keyboard.press('Enter');
     await page.waitForTimeout(800);
     
-    // Шаг 2: Заполняем код подтверждения (111111) и нажимаем "Далее"
+    // Шаг 2: Заполняем код подтверждения (111111) и нажимаем Enter
     console.log('📝 Шаг 2: Заполняем код подтверждения...');
     await page.fill('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=text]', '111111');
     
-    console.log('➡️ Нажимаем кнопку "Далее"...');
-    await page.click('#root > div > div.auth-modal-overlay > div > form > button');
+    console.log('⌨️ Нажимаем Enter...');
+    await page.keyboard.press('Enter');
     await page.waitForTimeout(800);
     
-    // Шаг 3: Заполняем пароль и нажимаем "Далее"
+    // Шаг 3: Заполняем пароль и нажимаем Enter
     console.log('📝 Шаг 3: Заполняем пароль...');
     await page.fill('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=password]', password);
     
-    console.log('➡️ Нажимаем кнопку "Далее"...');
-    await page.click('#root > div > div.auth-modal-overlay > div > form > button');
+    console.log('⌨️ Нажимаем Enter...');
+    await page.keyboard.press('Enter');
     await page.waitForTimeout(800);
     
-    // Шаг 4: Повторяем пароль и нажимаем "Зарегистрироваться"
+    // Шаг 4: Повторяем пароль и нажимаем Enter
     console.log('📝 Шаг 4: Повторяем пароль...');
     await page.fill('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=password]', password);
     
-    console.log('📤 Нажимаем "Зарегистрироваться"...');
-    await page.click('#root > div > div.auth-modal-overlay > div > form > button');
+    console.log('⌨️ Нажимаем Enter для регистрации...');
+    await page.keyboard.press('Enter');
     
     // Ждем успешной регистрации - модальное окно должно закрыться
     console.log('⏳ Ждем завершения регистрации...');
@@ -132,8 +132,8 @@ async function testEmailRegistration(page, email, password) {
         console.log('📝 Заполняем имя и фамилию...');
         await page.fill('#root > div > div.modal-overlay > div > form > input[type=text]', 'Александр Кубор');
         
-        console.log('📤 Отправляем форму с именем...');
-        await page.click('#root > div > div.modal-overlay > div > form > button');
+        console.log('⌨️ Нажимаем Enter для отправки формы с именем...');
+        await page.keyboard.press('Enter');
         await page.waitForTimeout(800);
         
         console.log('✅ Имя и фамилия заполнены');
