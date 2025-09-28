@@ -21,5 +21,8 @@ client/public/
 node_modules/
 package-lock.json
 
-# Browser profile
 browser-profile/
+uploads/
+
+# Database backups
+backups/

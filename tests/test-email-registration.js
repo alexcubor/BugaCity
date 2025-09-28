@@ -141,7 +141,8 @@ async function testEmailRegistration(page, email, password) {
         // Закрываем модальное окно с наградой
         console.log('🏆 Закрываем модальное окно с наградой...');
         try {
-          await page.click('#root > div > div:nth-child(3) > header > nav > div > div > div > button');
+          // Кликаем в любом месте кроме canvas для закрытия модального окна
+          await page.click('header', { timeout: 1000 });
           await page.waitForTimeout(500);
           console.log('✅ Модальное окно с наградой закрыто');
         } catch (error) {

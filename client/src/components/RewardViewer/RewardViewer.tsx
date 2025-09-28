@@ -36,6 +36,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   rewardPrice,
   rewardDescription
 }) => {
+  console.log('🔍 RewardViewer props:', { rewardId, rewardName, rewardPrice, rewardDescription });
   
   // Логика работы с URL для модального окна и отключение скролла
   useEffect(() => {
@@ -78,7 +79,9 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   if (isModal && !onClose) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    // Закрываем модальное окно при клике в любом месте, кроме canvas
+    const target = e.target as HTMLElement;
+    if (!target.closest('canvas')) {
       handleClose();
     }
   };
@@ -303,6 +306,19 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     if (autoRotate) {
       (camera as any).autoRotate = true;
       (camera as any).autoRotateSpeed = 0.5;
+    }
+
+    // Добавляем обработчик клика по пустому месту для закрытия модального окна
+    if (isModal && onClose) {
+      scene.onPointerObservable.add((pointerInfo) => {
+        if (pointerInfo.type === 1) { // POINTERDOWN
+          const pickResult = scene.pick(pointerInfo.event.offsetX, pointerInfo.event.offsetY);
+          // Если клик не попал в меш (пустое место), закрываем модальное окно
+          if (!pickResult || !pickResult.hit || !pickResult.pickedMesh) {
+            onClose();
+          }
+        }
+      });
     }
 
     // Загружаем 3D модель
@@ -554,12 +570,13 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     return (
       <div className="modal-overlay" onClick={handleBackdropClick}>
         <div className="modal-container">
-          <button className="modal-close" onClick={handleClose}>
-            ✕
-          </button>
-          <canvas ref={canvasRef} className="modal-canvas" />
+          <canvas 
+            ref={canvasRef} 
+            className="modal-canvas" 
+            onClick={(e) => e.stopPropagation()}
+          />
           {/* Информация о награде поверх canvas */}
-          <div className="modal-reward-info">
+          <div className="modal-reward-info" onClick={(e) => e.stopPropagation()}>
             <div className="modal-reward-title">
               {rewardName || rewardId}
             </div>

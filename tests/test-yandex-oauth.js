@@ -5,6 +5,40 @@ const path = require('path');
 // Путь к профилю браузера
 const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
 
+// Email для тестирования
+const TEST_EMAIL = 'alexcubor@yandex.ru';
+
+// Функция для удаления пользователя из базы данных
+async function deleteTestUser() {
+  console.log(`🗑️  Удаляем пользователя ${TEST_EMAIL} из базы данных...`);
+  
+  try {
+    // Сначала попробуем удалить конкретного пользователя через API
+    const response = await fetch(`${config.api.baseUrl}/api/users/${TEST_EMAIL}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      console.log(`✅ Пользователь ${TEST_EMAIL} удален`);
+    } else if (response.status === 404) {
+      console.log(`ℹ️  Пользователь ${TEST_EMAIL} не найден в базе данных`);
+    } else {
+      console.log('⚠️  Удаление пользователя не удалось, очищаем всю БД');
+      // Fallback: очищаем всю базу данных
+      const clearResponse = await fetch(`${config.api.baseUrl}/api/users/clear-db`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (clearResponse.ok) {
+        console.log('✅ База данных очищена');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Ошибка при удалении пользователя:', error);
+  }
+}
+
 // Функция для выхода из системы
 async function logoutUser(page) {
   console.log(`🚪 Выходим из системы...`);
@@ -106,6 +140,65 @@ async function testYandexLogin(page) {
       }
       console.log('✅ Пользователь успешно авторизован через Yandex OAuth');
       
+      // Проверяем HTML - ищем аватар пользователя
+      console.log('🔍 Проверяем HTML на наличие аватара...');
+      const html = await page.content();
+      
+      // Ищем аватар в HTML
+      if (html.includes('uploads/users/')) {
+        console.log('✅ Аватар найден в HTML!');
+        // Извлекаем путь к аватару
+        const avatarMatch = html.match(/uploads\/users\/[^"'\s]+/);
+        if (avatarMatch) {
+          console.log(`📸 Путь к аватару: ${avatarMatch[0]}`);
+        }
+      } else {
+        console.log('❌ Аватар НЕ найден в HTML');
+        console.log('🔍 Ищем дефолтную иконку...');
+        if (html.includes('user_icon.svg')) {
+          console.log('⚠️  Показывается дефолтная иконка вместо аватара');
+        }
+      }
+      
+      // Проверяем, есть ли токен в localStorage
+      const token = await page.evaluate(() => localStorage.getItem('token'));
+      if (token) {
+        console.log('✅ Токен найден в localStorage');
+        // Декодируем токен для проверки
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log(`🔍 ID пользователя из токена: ${payload.userId}`);
+          
+          // Проверяем API запрос к пользователю
+          console.log('🔍 Проверяем API запрос к пользователю...');
+          const apiResponse = await page.evaluate(async (userId) => {
+            try {
+              const response = await fetch(`/api/users/${userId}`);
+              const data = await response.json();
+              return { success: true, data, status: response.status };
+            } catch (error) {
+              return { success: false, error: error.message };
+            }
+          }, payload.userId);
+          
+          if (apiResponse.success) {
+            console.log(`✅ API запрос успешен (статус: ${apiResponse.status})`);
+            console.log(`🔍 Данные пользователя:`, JSON.stringify(apiResponse.data, null, 2));
+            if (apiResponse.data.avatar) {
+              console.log(`📸 Аватар в API: ${apiResponse.data.avatar}`);
+            } else {
+              console.log('❌ Аватар отсутствует в API ответе');
+            }
+          } else {
+            console.log(`❌ API запрос не удался: ${apiResponse.error}`);
+          }
+        } catch (e) {
+          console.log('⚠️  Не удалось декодировать токен');
+        }
+      } else {
+        console.log('❌ Токен НЕ найден в localStorage');
+      }
+      
       // Дополнительная проверка - убеждаемся, что мы на главной странице
       console.log('🔍 Проверяем, что мы находимся на главной странице...');
       const currentUrl = page.url();
@@ -141,6 +234,9 @@ async function runYandexOAuthTest() {
   console.log(`📁 Профиль: ${PROFILE_PATH}`);
   console.log(`🌐 URL: ${config.api.baseUrl}`);
   console.log('=====================================');
+
+  // Удаляем тестового пользователя из базы данных
+  await deleteTestUser();
 
   // Настройки браузера из конфигурации
   const browserOptions = {

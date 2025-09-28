@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SocialButtons from './SocialButtons';
 import './AuthModal.css';
 
@@ -22,9 +22,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+  
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
+  // Отслеживаем автозаполнение браузера
+  useEffect(() => {
+    const checkAutofill = () => {
+      if (emailInputRef.current && emailInputRef.current.value !== email) {
+        setEmail(emailInputRef.current.value);
+      }
+    };
+
+    // Проверяем автозаполнение при открытии модального окна
+    if (isOpen) {
+      const timer = setTimeout(checkAutofill, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, email]);
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
+  };
+
+  const handleEmailInput = (e: React.FormEvent<HTMLInputElement>) => {
+    setEmail(e.currentTarget.value);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -275,9 +296,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
               <div className="form-field">
                 <label>Email:</label>
                 <input
+                  ref={emailInputRef}
                   type="email"
                   value={email}
                   onChange={handleEmailChange}
+                  onInput={handleEmailInput}
                   required
                 />
               </div>

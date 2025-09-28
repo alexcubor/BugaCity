@@ -6,7 +6,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
-import awardRoutes from './routes/awards';
+import rewardRoutes from './routes/rewards';
 
 // Загружаем переменные окружения из .env файла
 dotenv.config();
@@ -18,13 +18,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), 'client/public')));
 
+// Статический роут для аватаров
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 
 
 // MongoDB подключение
 let mongoUri = process.env.MONGODB_URI;
 if (!mongoUri) {
   // Читаем пароль из переменной или из файла (для Docker secrets)
-  let mongodbPassword = 'glukograd_password'; // дефолтный пароль
+  let mongodbPassword = 'bugacity_password'; // дефолтный пароль
   if (process.env.MONGODB_PASSWORD_FILE && fs.existsSync(process.env.MONGODB_PASSWORD_FILE)) {
     mongodbPassword = fs.readFileSync(process.env.MONGODB_PASSWORD_FILE, 'utf8').trim();
   } else if (process.env.MONGODB_PASSWORD) {
@@ -35,14 +38,14 @@ if (!mongoUri) {
   const secretPath = process.env.MONGODB_PASSWORD_FILE || '';
   const useSwarmDns = secretPath && fs.existsSync(secretPath);
   const mongoHost = useSwarmDns ? 'mongodb' : 'localhost';
-  mongoUri = `mongodb://glukograd_user:${mongodbPassword}@${mongoHost}:27017/glukograd?authSource=glukograd`;
+  mongoUri = `mongodb://bugacity_user:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
 }
 
 console.log('[DB] Connecting to MongoDB using URI:', mongoUri);
 async function connectWithRetry(attempt = 1): Promise<void> {
   try {
     const client = await MongoClient.connect(mongoUri as string, { maxPoolSize: 10 });
-    const db = client.db('glukograd');
+    const db = client.db('bugacity');
     (app as any).locals.db = db;
     console.log('[DB] Connected to MongoDB (attempt', attempt, ')');
   } catch (err: any) {
@@ -57,7 +60,7 @@ connectWithRetry();
 // Маршруты
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/awards', awardRoutes);
+app.use('/api/rewards', rewardRoutes);
 
 // Временный отладочный endpoint для проверки подключения к БД
 app.get('/api/debug/db', async (_req, res) => {

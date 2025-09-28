@@ -13,7 +13,7 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongodb_password
-      MONGO_INITDB_DATABASE: glukograd
+      MONGO_INITDB_DATABASE: bugacity
     secrets:
       - mongodb_password
     volumes:
@@ -34,7 +34,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      MONGODB_URI: mongodb://glukograd_user:glukograd_password@mongodb:27017/glukograd?authSource=glukograd
+      MONGODB_URI: mongodb://bugacity_user:bugacity_password@mongodb:27017/bugacity?authSource=bugacity
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
       # Включаем чтение пароля Mongo из Docker secret и подключение по DNS-имени сервиса

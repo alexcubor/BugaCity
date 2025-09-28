@@ -13,13 +13,15 @@ services:
       - mongo_prod_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
-      - glukograd-network
+      - bugacity-network
     ports:
       - "27017:27017"  # Для разработки - доступ к MongoDB
 
   # Application
   app:
     image: bugacity:latest
+    ports:
+      - "3001:3001"  # Для туннеля
     deploy:
       replicas: 1
       restart_policy:
@@ -28,8 +30,8 @@ services:
         max_attempts: 3
     environment:
       NODE_ENV: development
-      PORT: 80
-      MONGODB_URI: mongodb://glukograd_user:glukograd_password@bugacity_mongodb:27017/glukograd?authSource=glukograd
+      PORT: 3001
+      MONGODB_URI: mongodb://bugacity_user:bugacity_password@bugacity_mongodb:27017/bugacity?authSource=bugacity
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
       MONGODB_PASSWORD_FILE: /run/secrets/mongodb_password
@@ -51,7 +53,7 @@ services:
     depends_on:
       - mongodb
     networks:
-      - glukograd-network
+      - bugacity-network
     volumes:
       - ./client/public:/app/client/public:ro
 
@@ -66,7 +68,7 @@ services:
     depends_on:
       - app
     networks:
-      - glukograd-network
+      - bugacity-network
 
 secrets:
   jwt_secret:
@@ -83,7 +85,8 @@ secrets:
 volumes:
   mongo_prod_data:
     external: true
+    name: mongodb_data
 
 networks:
-  glukograd-network:
+  bugacity-network:
     driver: overlay

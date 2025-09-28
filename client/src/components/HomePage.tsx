@@ -72,10 +72,14 @@ const HomePage: React.FC = () => {
   // Загружаем данные наград
   const loadRewardsData = async () => {
     try {
-      const response = await fetch('/api/awards');
+      console.log('🔍 Loading rewards data...');
+      const response = await fetch('/api/rewards');
       if (response.ok) {
         const allRewards = await response.json();
+        console.log('🔍 Loaded rewards:', allRewards);
         setRewardsData(allRewards);
+      } else {
+        console.error('Ошибка загрузки наград:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Ошибка загрузки данных наград:', error);
@@ -84,11 +88,18 @@ const HomePage: React.FC = () => {
 
   // Получаем данные выбранной награды
   const getSelectedRewardData = (rewardId: string) => {
-    return rewardsData.find(reward => reward.id === rewardId) || null;
+    console.log('🔍 getSelectedRewardData called with rewardId:', rewardId);
+    console.log('🔍 rewardsData:', rewardsData);
+    const found = rewardsData.find(reward => reward.id === rewardId) || null;
+    console.log('🔍 found reward:', found);
+    return found;
   };
 
   // Единая функция для открытия модального окна награды
   const openRewardModal = (userParam: string, rewardParam: string) => {
+    console.log('🔍 openRewardModal called with:', { userParam, rewardParam });
+    console.log('🔍 rewardsData length:', rewardsData.length);
+    
     if (userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) {
       // Если это ID, загружаем данные пользователя
       fetch(`/api/users/${userParam}`)
@@ -125,6 +136,9 @@ const HomePage: React.FC = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const userParam = urlParams.get('user');
       const rewardParam = urlParams.get('reward');
+      
+      console.log('🔍 checkUrl called with:', { userParam, rewardParam });
+      console.log('🔍 rewardsData length:', rewardsData.length);
       
       if (userParam && rewardParam) {
         openRewardModal(userParam, rewardParam);

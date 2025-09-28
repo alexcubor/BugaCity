@@ -2,23 +2,19 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { emailService } from '../emailService';
 import fs from 'fs';
+import path from 'path';
 
 class AuthController {
-  // Хранилище временных кодов подтверждения (в продакшене лучше использовать Redis)
   private emailVerificationCodes = new Map<string, { code: string, expires: number }>();
 
-  // Универсальная функция для чтения секретов
   private readSecret(secretName: string, envVar: string, fallback: string = ''): string {
-    // 1. Сначала проверяем переменную окружения
     if (process.env[envVar]) {
       return process.env[envVar]!;
     }
     
-    // 2. Затем пытаемся прочитать Docker секрет
     try {
       return fs.readFileSync(`/run/secrets/${secretName}`, 'utf8').trim();
     } catch (error) {
-      // 3. Потом пробуем локальный путь
       try {
         return fs.readFileSync(`secrets/${secretName}.txt`, 'utf8').trim();
       } catch (error2) {
@@ -28,10 +24,81 @@ class AuthController {
     }
   }
 
-  // Получение JWT секрета
   public getJwtSecret(): string {
     const secret = this.readSecret('jwt_secret', 'JWT_SECRET', 'secret');
     return secret;
+  }
+
+  private async generateIncrementalId(db: any): Promise<string> {
+    try {
+      const lastUser = await db.collection('users').findOne(
+        { _id: { $regex: /^\d{12}$/ } },
+        { sort: { _id: -1 } }
+      );
+      
+      let nextId: string;
+      if (lastUser && lastUser._id) {
+        const currentId = parseInt(lastUser._id);
+        nextId = (currentId + 1).toString().padStart(12, '0');
+      } else {
+        nextId = '1'.padStart(12, '0');
+      }
+      
+      console.log('🔍 Генерируем инкрементальный ID:', nextId);
+      return nextId;
+    } catch (error) {
+      console.error('❌ Ошибка генерации ID:', error);
+      const timestamp = Date.now().toString();
+      const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+      return timestamp + random;
+    }
+  }
+
+  private getUserDirPath(userId: string): { fullPath: string, relativePath: string } {
+    const hashPrefix = userId.substring(0, 8).padStart(8, '0');
+    const fullPath = path.join('uploads', 'users', hashPrefix, userId);
+    const relativePath = path.join('users', hashPrefix, userId);
+    return { fullPath, relativePath };
+  }
+
+  public getAvatarPath(userId: string): string {
+    const { relativePath } = this.getUserDirPath(userId);
+    return path.join(relativePath, 'avatar.jpg');
+  }
+  private async downloadAndSaveAvatar(avatarUrl: string, userId: string): Promise<string | null> {
+    try {
+      console.log('🔍 downloadAndSaveAvatar вызван с параметрами:', { avatarUrl, userId });
+      if (!avatarUrl) {
+        console.log('❌ avatarUrl пустой, возвращаем null');
+        return null;
+      }
+
+      const { fullPath: userDir, relativePath } = this.getUserDirPath(userId);
+      
+      if (!fs.existsSync(userDir)) {
+        fs.mkdirSync(userDir, { recursive: true });
+      }
+
+      const response = await fetch(avatarUrl);
+      if (!response.ok) {
+        console.error('❌ Ошибка скачивания аватара:', response.status);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+      const extension = path.extname(avatarUrl) || '.jpg';
+      const filename = `avatar${extension}`;
+      const filepath = path.join(userDir, filename);
+
+      fs.writeFileSync(filepath, Buffer.from(buffer));
+      
+      const avatarRelativePath = path.join(relativePath, filename);
+      console.log('✅ Аватар сохранен:', { filepath, avatarRelativePath });
+      return avatarRelativePath;
+    } catch (error) {
+      console.error('❌ Ошибка при сохранении аватара:', error);
+      return null;
+    }
   }
 
   // Получение VK Client ID (публичный, не секрет)
@@ -85,7 +152,6 @@ class AuthController {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    // Проверяем, существует ли пользователь с таким email
     const existingUser = await db.collection('users').findOne({ email });
     
     res.json({ 
@@ -106,11 +172,9 @@ class AuthController {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    // Генерируем код подтверждения
     const code = authController.generateVerificationCode(email);
     const expires = Date.now() + 10 * 60 * 1000; // 10 минут
 
-    // Сохраняем код
     authController.emailVerificationCodes.set(email, { code, expires });
 
     try {
@@ -132,13 +196,11 @@ class AuthController {
         return res.status(500).json({ error: 'Database not connected' });
       }
 
-      // Проверяем код подтверждения
       const storedData = authController.emailVerificationCodes.get(email);
       if (!storedData || storedData.code !== verificationCode || Date.now() > storedData.expires) {
         return res.status(400).json({ error: 'Неверный или устаревший код подтверждения' });
       }
 
-      // Удаляем использованный код
       authController.emailVerificationCodes.delete(email);
       
       const existingUser = await db.collection('users').findOne({ email });
@@ -147,22 +209,26 @@ class AuthController {
       }
 
       const hashedPassword = await bcrypt.hash(password, 12);
+      
+      const numericId = await authController.generateIncrementalId(db);
+      
       const userData: any = {
+        _id: numericId,
         email,
         password: hashedPassword,
-        name: name || '', // Оставляем пустым, если имя не передано
+        name: name || '',
         glukocoins: 0,
-        rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
+        rewards: ['pioneer']
       };
        
       const user = await db.collection('users').insertOne(userData);
 
       const jwtSecret = authController.getJwtSecret();
-      const token = jwt.sign({ userId: user.insertedId }, jwtSecret, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: numericId }, jwtSecret, { expiresIn: '7d' });
       
       res.json({ 
         token, 
-        userId: user.insertedId,
+        userId: numericId,
         isPioneer: true,
         pioneerNumber: 1
       });
@@ -257,7 +323,6 @@ class AuthController {
         : 'https://bugacity-npm.ru.tuna.am/api/auth/callback';
     
     console.log('🔍 Используем redirectUri:', redirectUri);
-    // Читаем секреты из файлов
     const yandexClientId = authController.getYandexClientId();
     const yandexClientSecret = authController.getYandexSecret();
     
@@ -300,12 +365,14 @@ class AuthController {
     console.log('🔍 Статус ответа от Yandex user info:', userResponse.status);
     const userData = await userResponse.json();
     console.log('🔍 Данные пользователя от Yandex:', userData);
+    console.log('🔍 Yandex ID:', userData.id, 'тип:', typeof userData.id);
     
     return {
       id: userData.id,
       name: userData.real_name || userData.display_name || userData.login,
       email: userData.default_email,
-      login: userData.login
+      login: userData.login,
+      avatar: userData.default_avatar_id ? `https://avatars.yandex.net/get-yapic/${userData.default_avatar_id}/islands-200` : null
     };
   }
 
@@ -315,10 +382,9 @@ class AuthController {
 
       const db = req.app.locals.db;
       
-      // VK может не предоставить email, используем ID для идентификации
       const vkId = userData.id;
+      console.log('🔍 VK ID:', vkId, 'тип:', typeof vkId);
       
-      // Ищем пользователя по VK ID или email (если есть)
       let user = await db.collection('users').findOne({
         $or: [
           { vkId: vkId },
@@ -327,8 +393,8 @@ class AuthController {
       });
 
       if (!user) {
-        // Автоматически регистрируем пользователя, если его нет в базе
-        // Проверяем, не существует ли уже пользователь с таким username
+        const numericId = await authController.generateIncrementalId(db);
+        
         let username = `vk_${vkId}`;
         let counter = 1;
         while (await db.collection('users').findOne({ username })) {
@@ -337,18 +403,19 @@ class AuthController {
         }
 
         const result = await db.collection('users').insertOne({
+          _id: numericId,
           name: userData.first_name + ' ' + userData.last_name,
-          username: username, // Создаем уникальное имя пользователя для VK
-          email: userData.email || `vk_${vkId}@vk.local`, // Если email нет, создаем временный
+          username: username,
+          email: userData.email || `vk_${vkId}@vk.local`,
           vkId: vkId,
+          avatar: userData.photo_200 || null,
           glukocoins: 0,
-          rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
+          rewards: ['pioneer']
         });
 
-        user = await db.collection('users').findOne({ _id: result.insertedId });
+        user = await db.collection('users').findOne({ _id: numericId });
         
-        // Перенаправляем на награду для нового пользователя
-        res.json({ token: jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' }), user, isNewUser: true });
+        res.json({ token: jwt.sign({ userId: numericId }, authController.getJwtSecret(), { expiresIn: '7d' }), user, isNewUser: true });
         return;
       }
 
@@ -364,7 +431,7 @@ class AuthController {
   async getVKUser(req: any, res: any) {
     try {
       const { accessToken, userId } = req.query;
-      const response = await fetch(`https://api.vk.com/method/users.get?user_ids=${userId}&fields=email&access_token=${accessToken}&v=5.131`);
+      const response = await fetch(`https://api.vk.com/method/users.get?user_ids=${userId}&fields=email,photo_200&access_token=${accessToken}&v=5.131`);
       const data = await response.json();
       res.json(data.response[0]);
     } catch (error) {
@@ -406,7 +473,6 @@ class AuthController {
         }
         console.log('🔍 База данных подключена');
         
-        // Ищем пользователя только по email
         console.log('🔍 Ищем пользователя в базе данных по email:', userData.email);
         let user = await db.collection('users').findOne({
           email: userData.email
@@ -415,18 +481,25 @@ class AuthController {
 
         if (!user) {
           console.log('🔍 Создаем нового пользователя...');
-          // Автоматически регистрируем пользователя
+          
+          const numericId = await authController.generateIncrementalId(db);
+          
+          let avatarPath = null;
+          if (userData.avatar) {
+            console.log('🔍 Скачиваем аватар пользователя...');
+            avatarPath = await authController.downloadAndSaveAvatar(userData.avatar, numericId);
+          }
           const result = await db.collection('users').insertOne({
+            _id: numericId,
             name: userData.name,
             email: userData.email,
-            username: userData.email.split('@')[0], // Используем часть email как username
+            username: userData.email.split('@')[0],
             glukocoins: 0,
-            rewards: ['pioneer'] // Выдаем награду Pioneer любому новому пользователю
+            rewards: ['pioneer']
           });
 
           user = await db.collection('users').findOne({ _id: result.insertedId });
           
-          // Перенаправляем на награду для нового пользователя
           console.log('🔍 Генерируем JWT токен для нового пользователя...');
           const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
           const origin = req.headers.origin || (req.headers.host && req.headers.host.includes('bugacity-docker.ru.tuna.am') 
@@ -452,6 +525,11 @@ class AuthController {
             </html>
           `);
           return;
+        }
+
+        if (userData.avatar) {
+          console.log('🔍 Скачиваем аватар существующего пользователя...');
+          await authController.downloadAndSaveAvatar(userData.avatar, user._id);
         }
 
         console.log('🔍 Генерируем JWT токен для существующего пользователя...');
@@ -488,14 +566,15 @@ class AuthController {
           throw new Error('Database connection failed');
         }
         
-        // Ищем пользователя только по email
         let user = await db.collection('users').findOne({
           email: userData.email
         });
 
         if (!user) {
-          // Автоматически регистрируем пользователя
+          const numericId = await authController.generateIncrementalId(db);
+          
           const result = await db.collection('users').insertOne({
+            _id: numericId,
             name: userData.name,
             email: userData.email,
             username: userData.email.split('@')[0],
@@ -503,9 +582,9 @@ class AuthController {
             rewards: ['pioneer']
           });
 
-          user = await db.collection('users').findOne({ _id: result.insertedId });
+          user = await db.collection('users').findOne({ _id: numericId });
           
-          const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
+          const token = jwt.sign({ userId: numericId }, authController.getJwtSecret(), { expiresIn: '7d' });
           const origin = req.headers.origin || (req.headers.host && req.headers.host.includes('bugacity-docker.ru.tuna.am') 
             ? 'https://bugacity-docker.ru.tuna.am' 
             : req.headers.host && req.headers.host.includes('gluko.city')
