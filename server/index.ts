@@ -8,11 +8,11 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import rewardRoutes from './routes/rewards';
 
-// Загружаем переменные окружения из .env файла
-dotenv.config();
+// Загружаем переменные окружения из .env.dev файла
+dotenv.config({ path: '.env.dev' });
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '80', 10);
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(cors());
 app.use(express.json());

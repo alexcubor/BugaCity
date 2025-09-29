@@ -9,7 +9,7 @@
     "dist/**/*",
     "client/public/**/*"
   ],
-  "exec": "ts-node server/index.ts",
+  "exec": "ts-node -r dotenv/config server/index.ts dotenv_config_path=.env.dev",
   "env": {
     "NODE_ENV": "development"
   }

@@ -1,36 +1,56 @@
-const { runEmailRegistrationTest } = require('./test-email-registration');
+const { runBackendTest } = require('./test-registration-backend');
+const { runEmailRegistrationTest } = require('./test-registration-frontend');
 const { runYandexOAuthTest } = require('./test-yandex-oauth');
 const { runVKOAuthTest } = require('./test-vk-oauth');
 
 // Основная функция для запуска всех тестов
 async function runAllTests() {
-  console.log('🚀 Запуск всех OAuth тестов');
+  console.log('🚀 Запуск всех тестов');
   console.log('=====================================');
   console.log('📋 Тесты будут запущены в следующем порядке:');
-  console.log('1. 📧 Регистрация через email');
-  console.log('2. 🔵 Вход через Yandex OAuth');
-  // console.log('3. 🔵 Вход через VK OAuth');
+  console.log('1. ⚡ Backend регистрация (быстрый тест)');
+  console.log('2. 🖥️  Frontend регистрация (медленный тест)');
+  console.log('3. 🔵 Вход через Yandex OAuth');
+  // console.log('4. 🔵 Вход через VK OAuth');
   console.log('=====================================\n');
 
   const results = {
-    emailRegistration: false,
+    backendRegistration: false,
+    frontendRegistration: false,
     yandexOAuth: false,
     vkOAuth: false
   };
 
   try {
-    // 1. Тест регистрации через email
-    console.log('🔄 Запуск теста регистрации через email...');
+    // 1. Быстрый backend тест регистрации
+    console.log('⚡ Запуск быстрого backend теста регистрации...');
     try {
-      const emailResult = await runEmailRegistrationTest();
-      results.emailRegistration = emailResult;
-      console.log(`✅ Тест регистрации через email завершен: ${emailResult ? 'УСПЕХ' : 'ОШИБКА'}\n`);
+      const backendResult = await runBackendTest();
+      results.backendRegistration = backendResult;
+      console.log(`✅ Backend тест завершен: ${backendResult ? 'УСПЕХ' : 'ОШИБКА'}\n`);
+      
+      if (!backendResult) {
+        console.log('❌ Backend тест не прошел! Пропускаем frontend тест для экономии времени.\n');
+        results.frontendRegistration = false;
+      } else {
+        // 2. Frontend тест регистрации (только если backend прошел)
+        console.log('🖥️  Backend тест прошел! Запуск frontend теста регистрации...');
+        try {
+          const frontendResult = await runEmailRegistrationTest();
+          results.frontendRegistration = frontendResult;
+          console.log(`✅ Frontend тест завершен: ${frontendResult ? 'УСПЕХ' : 'ОШИБКА'}\n`);
+        } catch (error) {
+          console.error('❌ Ошибка в frontend тесте регистрации:', error.message);
+          results.frontendRegistration = false;
+        }
+      }
     } catch (error) {
-      console.error('❌ Ошибка в тесте регистрации через email:', error.message);
-      results.emailRegistration = false;
+      console.error('❌ Ошибка в backend тесте регистрации:', error.message);
+      results.backendRegistration = false;
+      results.frontendRegistration = false;
     }
 
-    // 2. Тест входа через Yandex OAuth
+    // 3. Тест входа через Yandex OAuth
     console.log('🔄 Запуск теста входа через Yandex OAuth...');
     try {
       const yandexResult = await runYandexOAuthTest();
@@ -41,7 +61,7 @@ async function runAllTests() {
       results.yandexOAuth = false;
     }
 
-    // 3. Тест входа через VK OAuth (временно отключен)
+    // 4. Тест входа через VK OAuth (временно отключен)
     // console.log('🔄 Запуск теста входа через VK OAuth...');
     // try {
     //   const vkResult = await runVKOAuthTest();
@@ -60,7 +80,8 @@ async function runAllTests() {
   // Выводим итоговые результаты
   console.log('\n📊 ИТОГОВЫЕ РЕЗУЛЬТАТЫ ВСЕХ ТЕСТОВ:');
   console.log('=====================================');
-  console.log(`📧 Регистрация через email: ${results.emailRegistration ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
+  console.log(`⚡ Backend регистрация: ${results.backendRegistration ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
+  console.log(`🖥️  Frontend регистрация: ${results.frontendRegistration ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
   console.log(`🔵 Вход через Yandex OAuth: ${results.yandexOAuth ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
   console.log(`🔵 Вход через VK OAuth: ${results.vkOAuth ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
 
@@ -91,7 +112,8 @@ async function main() {
     default:
       console.log('Использование: node test-all.js test');
       console.log('\nДоступные отдельные тесты:');
-      console.log('- node test-email-registration.js test');
+      console.log('- node test-registration-backend.js (быстрый backend тест)');
+      console.log('- node test-registration-frontend.js test (медленный frontend тест)');
       console.log('- node test-yandex-oauth.js test');
       console.log('- node test-vk-oauth.js test');
       break;
