@@ -72,6 +72,10 @@ module.exports = (env, argv) => {
           {
             from: path.resolve(__dirname, 'static/assets/favicon.ico'),
             to: 'favicon.ico'
+          },
+          {
+            from: path.resolve(__dirname, 'static/assets/fonts'),
+            to: 'fonts'
           }
         ]
       }),

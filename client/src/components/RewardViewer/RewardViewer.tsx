@@ -384,24 +384,41 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             textureContext.translate(1130, 1250); // Смещаем в правый нижний угол
             textureContext.rotate(-30 * Math.PI / 180); // -30 градусов (по часовой стрелке)
             
-            // Рисуем имя пользователя сверху
-            textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
-            textureContext.font = '400 68px "Bad Script", cursive';
-            textureContext.textAlign = 'center';
-            textureContext.textBaseline = 'middle';
-            textureContext.fillText(userName, 0, -50);
+            // Загружаем локальный шрифт Bad Script
+            new Promise(async (resolve) => {
+              try {
+                const font = new FontFace('Bad Script', 'url(/fonts/BadScript-Regular.ttf)');
+                await font.load();
+                (document.fonts as any).add(font);
+                console.log('✅ Локальный Bad Script загружен');
+                resolve(void 0);
+              } catch (error) {
+                console.warn('⚠️ Ошибка загрузки локального шрифта:', error);
+                resolve(void 0);
+              }
+            }).then(() => {
             
-            textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
-            textureContext.font = '400 42px "Bad Script", cursive';
-            textureContext.textAlign = 'center';
-            textureContext.textBaseline = 'middle';
-            textureContext.fillText('· Среди первых ·', 0, 50);
-            
-            // Восстанавливаем состояние контекста
-            textureContext.restore();
-            
-            // Обновляем текстуру
-            combinedTexture.update();
+              // Рисуем имя пользователя сверху
+              textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
+              textureContext.font = '400 68px "Bad Script"';
+              console.log('🔍 Установлен шрифт для имени:', textureContext.font);
+              textureContext.textAlign = 'center';
+              textureContext.textBaseline = 'middle';
+              textureContext.fillText(userName, 0, -50);
+              
+              textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
+              textureContext.font = '400 42px "Bad Script"';
+              console.log('🔍 Установлен шрифт для подписи:', textureContext.font);
+              textureContext.textAlign = 'center';
+              textureContext.textBaseline = 'middle';
+              textureContext.fillText('· Среди первых ·', 0, 50);
+              
+              // Восстанавливаем состояние контекста
+              textureContext.restore();
+              
+              // Обновляем текстуру
+              combinedTexture.update();
+            });
 
             // Пробуем создать декаль стандартным способом Babylon.js
             if (targetMesh.getTotalVertices() > 0 && targetMesh.material) {
