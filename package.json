@@ -22,18 +22,9 @@
     "browser:npm": "node tests/open-browser.js https://bugacity-npm.ru.tuna.am",
     "browser:docker": "node tests/open-browser.js https://bugacity-docker.ru.tuna.am",
     "browser:prod": "node tests/open-browser.js https://gluko.city",
-    "test:all": "node tests/test-all.js test",
-    "test:all:docker": "TEST_API_URL=https://bugacity-docker.ru.tuna.am node tests/test-all.js test",
-    "test:all:prod": "TEST_API_URL=https://gluko.city node tests/test-all.js test",
-    "test:email": "node tests/test-email-registration.js test",
-    "test:email:docker": "TEST_API_URL=https://bugacity-docker.ru.tuna.am node tests/test-email-registration.js test",
-    "test:email:prod": "TEST_API_URL=https://gluko.city node tests/test-email-registration.js test",
-    "test:yandex": "node tests/test-yandex-oauth.js test",
-    "test:yandex:npm": "TEST_API_URL=https://bugacity-npm.ru.tuna.am node tests/test-yandex-oauth.js test",
-    "test:yandex:prod": "TEST_API_URL=https://gluko.city node tests/test-yandex-oauth.js test",
-    "test:vk": "node tests/test-vk-oauth.js test",
-    "test:vk:docker": "TEST_API_URL=https://bugacity-docker.ru.tuna.am node tests/test-vk-oauth.js test",
-    "test:vk:prod": "TEST_API_URL=https://gluko.city node tests/test-vk-oauth.js test"
+    "test:all:npm": "node tests/test-all.js",
+    "test:all:docker": "TEST_API_URL=https://bugacity-docker.ru.tuna.am node tests/test-all.js",
+    "test:all:prod": "TEST_API_URL=https://gluko.city node tests/test-all.js"
   },
   "dependencies": {
     "axios": "^1.6.2",

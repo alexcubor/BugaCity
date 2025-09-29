@@ -257,16 +257,7 @@ async function runVKOAuthTest() {
 
 // CLI интерфейс
 async function main() {
-  const command = process.argv[2];
-  
-  switch (command) {
-    case 'test':
-      await runVKOAuthTest();
-      break;
-    default:
-      console.log('Использование: node test-vk-oauth.js test');
-      break;
-  }
+  await runVKOAuthTest();
 }
 
 if (require.main === module) {

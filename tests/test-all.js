@@ -103,21 +103,7 @@ async function runAllTests() {
 
 // CLI интерфейс
 async function main() {
-  const command = process.argv[2];
-  
-  switch (command) {
-    case 'test':
-      await runAllTests();
-      break;
-    default:
-      console.log('Использование: node test-all.js test');
-      console.log('\nДоступные отдельные тесты:');
-      console.log('- node test-registration-backend.js (быстрый backend тест)');
-      console.log('- node test-registration-frontend.js test (медленный frontend тест)');
-      console.log('- node test-yandex-oauth.js test');
-      console.log('- node test-vk-oauth.js test');
-      break;
-  }
+  await runAllTests();
 }
 
 if (require.main === module) {

@@ -330,16 +330,7 @@ async function runYandexOAuthTest() {
 
 // CLI интерфейс
 async function main() {
-  const command = process.argv[2];
-  
-  switch (command) {
-    case 'test':
-      await runYandexOAuthTest();
-      break;
-    default:
-      console.log('Использование: node test-yandex-oauth.js test');
-      break;
-  }
+  await runYandexOAuthTest();
 }
 
 if (require.main === module) {

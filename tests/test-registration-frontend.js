@@ -281,16 +281,7 @@ async function runEmailRegistrationTest() {
 
 // CLI интерфейс
 async function main() {
-  const command = process.argv[2];
-  
-  switch (command) {
-    case 'test':
-      await runEmailRegistrationTest();
-      break;
-    default:
-      console.log('Использование: node test-email-registration.js test');
-      break;
-  }
+  await runEmailRegistrationTest();
 }
 
 if (require.main === module) {
