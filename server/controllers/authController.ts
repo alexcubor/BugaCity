@@ -509,21 +509,31 @@ class AuthController {
               : 'https://bugacity-npm.ru.tuna.am');
           console.log('🔍 JWT токен сгенерирован, origin:', origin);
           
-          res.send(`
-            <html>
-              <body>
-                <script>
-                  window.opener.postMessage({
-                    type: 'social_auth_success',
-                    token: '${token}',
-                    user: ${JSON.stringify(user)},
-                    isNewUser: true
-                  }, '${origin}');
-                  window.close();
-                </script>
-              </body>
-            </html>
-          `);
+          // Проверяем, является ли это мобильным устройством
+          const userAgent = req.headers['user-agent'] || '';
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+          
+          if (isMobile) {
+            // Для мобильных устройств перенаправляем на главную страницу с токеном
+            res.redirect(`${origin}/?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}&isNewUser=true`);
+          } else {
+            // Для десктопа используем postMessage
+            res.send(`
+              <html>
+                <body>
+                  <script>
+                    window.opener.postMessage({
+                      type: 'social_auth_success',
+                      token: '${token}',
+                      user: ${JSON.stringify(user)},
+                      isNewUser: true
+                    }, '${origin}');
+                    window.close();
+                  </script>
+                </body>
+              </html>
+            `);
+          }
           return;
         }
 
@@ -543,20 +553,30 @@ class AuthController {
             : 'https://bugacity-npm.ru.tuna.am');
         console.log('🔍 JWT токен сгенерирован для существующего пользователя, origin:', origin);
         
-        res.send(`
-          <html>
-            <body>
-              <script>
-                window.opener.postMessage({
-                  type: 'social_auth_success',
-                  token: '${token}',
-                  user: ${JSON.stringify(user)}
-                }, '${origin}');
-                window.close();
-              </script>
-            </body>
-          </html>
-        `);
+        // Проверяем, является ли это мобильным устройством
+        const userAgent = req.headers['user-agent'] || '';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        
+        if (isMobile) {
+          // Для мобильных устройств перенаправляем на главную страницу с токеном
+          res.redirect(`${origin}/?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}&isNewUser=false`);
+        } else {
+          // Для десктопа используем postMessage
+          res.send(`
+            <html>
+              <body>
+                <script>
+                  window.opener.postMessage({
+                    type: 'social_auth_success',
+                    token: '${token}',
+                    user: ${JSON.stringify(user)}
+                  }, '${origin}');
+                  window.close();
+                </script>
+              </body>
+            </html>
+          `);
+        }
       } else if (provider === 'vk') {
         // Обработка VK OAuth
         const userData = await authController.exchangeVKCode(code, req.headers.host);

@@ -147,9 +147,33 @@ const HomePage: React.FC = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const userParam = urlParams.get('user');
       const rewardParam = urlParams.get('reward');
+      const token = urlParams.get('token');
+      const user = urlParams.get('user');
+      const isNewUser = urlParams.get('isNewUser');
       
-      console.log('🔍 checkUrl called with:', { userParam, rewardParam });
+      console.log('🔍 checkUrl called with:', { userParam, rewardParam, token, user, isNewUser });
       console.log('🔍 rewardsData length:', rewardsData.length);
+      
+      // Обрабатываем OAuth callback для мобильных устройств
+      if (token && user) {
+        console.log('🔍 Обрабатываем OAuth callback для мобильного устройства');
+        localStorage.setItem('token', token);
+        
+        // Очищаем URL от параметров OAuth
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('token');
+        newUrl.searchParams.delete('user');
+        newUrl.searchParams.delete('isNewUser');
+        window.history.replaceState({}, '', newUrl.toString());
+        
+        // Если это новый пользователь, показываем награду
+        if (isNewUser === 'true') {
+          window.location.href = '/?reward=pioneer';
+        } else {
+          window.location.reload();
+        }
+        return;
+      }
       
       if (userParam && rewardParam) {
         openRewardModal(userParam, rewardParam);
