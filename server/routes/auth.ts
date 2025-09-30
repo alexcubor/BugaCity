@@ -1,5 +1,7 @@
 import express from 'express';
+import fs from 'fs';
 import { authController } from '../controllers/authController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -24,7 +26,7 @@ router.post('/vk-callback', authController.handleVKCallback);
 // VK user info
 router.get('/vk-user', authController.getVKUser);
 
-// Delete user
-router.post('/delete-user', authController.deleteUser);
+// Delete user (требует авторизации)
+router.post('/delete-user', authenticateToken, authController.deleteUser);
 
 export default router;

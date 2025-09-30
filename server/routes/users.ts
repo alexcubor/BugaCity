@@ -1,26 +1,36 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
 import { authenticateToken } from '../middleware/auth';
+import { requireOwnership } from '../middleware/roles';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+// Получить информацию о текущем пользователе
+router.get('/me', authenticateToken, async (req, res) => {
   try {
     const db = req.app.locals.db;
     if (!db) {
       return res.status(500).json({ error: 'Database not connected' });
     }
+
+    const userId = (req as any).user?.userId;
+    const user = await db.collection('users').findOne({ _id: userId });
     
-    const users = await db.collection('users').find({}).toArray();
-    res.json({ users: users.map((user: any) => ({
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    res.json({
       id: user._id,
       email: user.email,
       name: user.name,
+      role: user.role || 'user',
       glukocoins: user.glukocoins,
-      rewards: user.rewards
-    })) });
+      rewards: user.rewards || [],
+      avatar: user._id ? `users/${user._id.substring(0, 8).padStart(8, '0')}/${user._id}/avatar.jpg` : null
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Ошибка при получении пользователей' });
+    res.status(500).json({ error: 'Ошибка при получении пользователя' });
   }
 });
 
@@ -59,37 +69,25 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-router.post('/:userId/update-name', async (req, res) => {
+// Обновить свое имя
+router.post('/me/update-name', authenticateToken, async (req, res) => {
   try {
     const db = req.app.locals.db;
     if (!db) {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    const { userId } = req.params;
     const { name } = req.body;
+    const userId = (req as any).user?.userId;
     
     if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'Имя не может быть пустым' });
     }
 
-    let updateResult;
-    if (ObjectId.isValid(userId)) {
-      updateResult = await db.collection('users').updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { name: name.trim() } }
-      );
-    } else if (/^\d{12}$/.test(userId)) {
-      updateResult = await db.collection('users').updateOne(
-        { _id: userId },
-        { $set: { name: name.trim() } }
-      );
-    } else {
-      updateResult = await db.collection('users').updateOne(
-        { email: userId },
-        { $set: { name: name.trim() } }
-      );
-    }
+    const updateResult = await db.collection('users').updateOne(
+      { _id: userId },
+      { $set: { name: name.trim() } }
+    );
     
     if (updateResult.matchedCount === 0) {
       return res.status(404).json({ error: 'Пользователь не найден' });
@@ -104,68 +102,24 @@ router.post('/:userId/update-name', async (req, res) => {
   }
 });
 
-router.post('/:email/add-rewards', async (req, res) => {
+// Удалить свой аккаунт
+router.delete('/me', authenticateToken, async (req, res) => {
   try {
     const db = req.app.locals.db;
     if (!db) {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    const { email } = req.params;
-    const { rewards } = req.body;
-
-    const user = await db.collection('users').findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
-    }
-
-    const updatedRewards = [...(user.rewards || []), ...rewards];
-
-    await db.collection('users').updateOne(
-      { email },
-      { $set: { rewards: updatedRewards } }
-    );
-
-    res.json({ 
-      message: 'Награды добавлены',
-      rewards: updatedRewards
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Ошибка при добавлении наград' });
-  }
-});
-
-router.delete('/:email', async (req, res) => {
-  try {
-    const db = req.app.locals.db;
-    if (!db) {
-      return res.status(500).json({ error: 'Database not connected' });
-    }
-
-    const { email } = req.params;
-    const result = await db.collection('users').deleteOne({ email });
+    const userId = (req as any).user?.userId;
+    const result = await db.collection('users').deleteOne({ _id: userId });
     
     if (result.deletedCount > 0) {
-      res.json({ message: `Пользователь ${email} удален` });
+      res.json({ message: 'Ваш аккаунт удален' });
     } else {
       res.status(404).json({ error: 'Пользователь не найден' });
     }
   } catch (error) {
-    res.status(500).json({ error: 'Ошибка при удалении пользователя' });
-  }
-});
-
-router.post('/clear-db', async (req, res) => {
-  try {
-    const db = req.app.locals.db;
-    if (!db) {
-      return res.status(500).json({ error: 'Database not connected' });
-    }
-    
-    await db.collection('users').deleteMany({});
-    res.json({ message: 'База данных очищена' });
-  } catch (error) {
-    res.status(500).json({ error: 'Ошибка очистки' });
+    res.status(500).json({ error: 'Ошибка при удалении аккаунта' });
   }
 });
 

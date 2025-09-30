@@ -13,7 +13,7 @@ async function deleteTestUser() {
   console.log(`🗑️  Удаляем пользователя ${TEST_EMAIL} из базы данных...`);
   
   try {
-    // Сначала попробуем удалить конкретного пользователя через API
+    // Попробуем удалить конкретного пользователя через API
     const response = await fetch(`${config.api.baseUrl}/api/users/${TEST_EMAIL}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
@@ -24,15 +24,7 @@ async function deleteTestUser() {
     } else if (response.status === 404) {
       console.log(`ℹ️  Пользователь ${TEST_EMAIL} не найден в базе данных`);
     } else {
-      console.log('⚠️  Удаление пользователя не удалось, очищаем всю БД');
-      // Fallback: очищаем всю базу данных
-      const clearResponse = await fetch(`${config.api.baseUrl}/api/users/clear-db`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (clearResponse.ok) {
-        console.log('✅ База данных очищена');
-      }
+      console.log('⚠️  Удаление пользователя не удалось, продолжаем тест');
     }
   } catch (error) {
     console.error('❌ Ошибка при удалении пользователя:', error);

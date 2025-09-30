@@ -9,9 +9,34 @@ const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
 async function deleteUserFromDB(email) {
   try {
     console.log(`🔄 Попытка удаления пользователя ${email} из базы данных...`);
+    
+    // Сначала пытаемся войти, чтобы получить токен
+    let token = null;
+    try {
+      const loginResponse = await fetch(`${config.api.baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: '111' })
+      });
+      
+      if (loginResponse.ok) {
+        const loginData = await loginResponse.json();
+        token = loginData.token;
+        console.log(`🔑 Получен токен для удаления пользователя`);
+      }
+    } catch (loginError) {
+      console.log(`ℹ️  Не удалось войти под пользователем (возможно, не существует)`);
+    }
+    
+    // Теперь пытаемся удалить пользователя
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(`${config.api.baseUrl}/api/auth/delete-user`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ email })
     });
     

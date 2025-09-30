@@ -1,12 +1,15 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import rewardRoutes from './routes/rewards';
+import adminRoutes from './routes/admin';
 
 // Загружаем переменные окружения из .env.dev файла
 dotenv.config({ path: '.env.dev' });
@@ -14,7 +17,127 @@ dotenv.config({ path: '.env.dev' });
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-app.use(cors());
+// Шаг 1: Расширенный Helmet с дополнительными защитами
+app.use(helmet({
+  contentSecurityPolicy: false, // Отключаем CSP пока что
+  crossOriginEmbedderPolicy: false, // Отключаем для OAuth
+  crossOriginOpenerPolicy: false,   // Отключаем для OAuth popup
+  crossOriginResourcePolicy: false, // Отключаем для OAuth
+  
+  // Дополнительные защитные заголовки
+  hsts: {
+    maxAge: 31536000, // 1 год
+    includeSubDomains: true,
+    preload: true
+  },
+  noSniff: true, // Запрещаем MIME-type sniffing
+  frameguard: { action: 'deny' }, // Запрещаем встраивание в iframe
+  xssFilter: true, // Включаем XSS фильтр браузера
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  dnsPrefetchControl: true, // Контролируем DNS prefetch
+  ieNoOpen: true, // Защита от IE
+  hidePoweredBy: true // Скрываем X-Powered-By
+}));
+
+// Шаг 2: Добавляем ограниченный CORS с исключениями для OAuth
+const allowedOrigins = [
+  'https://bugacity-npm.ru.tuna.am',
+  'https://bugacity-docker.ru.tuna.am', 
+  'https://gluko.city',
+  'http://localhost:3000',
+  'http://localhost:8080'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Разрешаем запросы без origin (например, мобильные приложения, Postman)
+    if (!origin) return callback(null, true);
+    
+    // Разрешаем OAuth провайдеры
+    const oauthDomains = [
+      'oauth.yandex.ru',
+      'login.yandex.ru', 
+      'oauth.vk.com',
+      'api.vk.com'
+    ];
+    
+    if (oauthDomains.some(domain => origin.includes(domain))) {
+      return callback(null, true);
+    }
+    
+    // Проверяем whitelist доменов
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`🚫 CORS заблокирован для origin: ${origin}`);
+      callback(new Error('Не разрешено CORS политикой'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control'
+  ],
+  exposedHeaders: ['X-Total-Count'], // Заголовки, доступные клиенту
+  maxAge: 86400, // Кэшируем preflight запросы на 24 часа
+  optionsSuccessStatus: 200 // Для старых браузеров
+}));
+
+// Шаг 3: Rate Limiting с исключениями для OAuth и dev окружения
+const isDev = fs.existsSync('.env.dev');
+
+// Rate limiting только для продакшена
+if (!isDev) {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 минут
+    max: 100, // максимум 100 запросов с одного IP за 15 минут
+    message: {
+      error: 'Слишком много запросов с этого IP, попробуйте позже',
+      retryAfter: '15 минут'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Пропускаем OAuth callback endpoints и OAuth инициализацию
+      return req.path.includes('/api/auth/callback') || 
+             req.path.includes('/api/auth/oauth') ||
+             req.path.includes('/api/auth/yandex') ||
+             req.path.includes('/api/auth/vk');
+    }
+  });
+
+  app.use(limiter);
+}
+
+// Auth rate limiting только для продакшена
+if (!isDev) {
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 минут
+    max: 5, // максимум 5 попыток входа за 15 минут
+    message: {
+      error: 'Слишком много попыток входа, попробуйте позже',
+      retryAfter: '15 минут'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Пропускаем OAuth endpoints
+      return req.path.includes('/api/auth/callback') || 
+             req.path.includes('/api/auth/oauth') ||
+             req.path.includes('/api/auth/yandex') ||
+             req.path.includes('/api/auth/vk');
+    }
+  });
+
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
+}
+
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), 'client/public')));
 
@@ -61,6 +184,7 @@ connectWithRetry();
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Временный отладочный endpoint для проверки подключения к БД
 app.get('/api/debug/db', async (_req, res) => {

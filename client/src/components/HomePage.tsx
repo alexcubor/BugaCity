@@ -254,10 +254,11 @@ const HomePage: React.FC = () => {
       console.log('userId:', userId);
 
       console.log('Отправляем запрос на обновление имени...');
-      const response = await fetch(`/api/users/${userId}/update-name`, {
+      const response = await fetch(`/api/users/me/update-name`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ name })
       });

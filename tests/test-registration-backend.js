@@ -3,7 +3,7 @@ const axios = require('axios');
 // Конфигурация
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:3000';
 const TEST_EMAIL = 'sdiz@ya.ru';
-const TEST_PASSWORD = '111111a';
+const TEST_PASSWORD = '111';
 const TEST_VERIFICATION_CODE = '111111';
 
 console.log('🧪 ТЕСТ BACKEND РЕГИСТРАЦИИ');
@@ -19,8 +19,21 @@ async function deleteUser(email) {
   console.log(`🗑️  Удаляем пользователя: ${email}`);
   
   try {
+    // Сначала входим под пользователем, чтобы получить токен
+    const loginResponse = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      email: email,
+      password: TEST_PASSWORD
+    });
+    
+    const token = loginResponse.data.token;
+    
+    // Теперь удаляем пользователя с токеном
     const response = await axios.post(`${API_BASE_URL}/api/auth/delete-user`, {
       email: email
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     
     console.log(`✅ Пользователь удален:`, response.data);
@@ -28,6 +41,10 @@ async function deleteUser(email) {
   } catch (error) {
     if (error.response?.status === 404 || error.response?.data?.message?.includes('не найден')) {
       console.log(`ℹ️  Пользователь не найден (это нормально)`);
+      return true;
+    }
+    if (error.response?.status === 400 && error.response?.data?.message?.includes('Неверные данные')) {
+      console.log(`ℹ️  Пользователь не найден или неверный пароль (это нормально)`);
       return true;
     }
     console.error(`❌ Ошибка при удалении пользователя:`, error.response?.data || error.message);
@@ -127,17 +144,12 @@ async function runBackendTest() {
     console.log('-----------------------------------------------');
     const userExists = await checkUserExists(TEST_EMAIL);
     
-    // Шаг 2: Удаляем пользователя (если существует)
-    if (userExists) {
-      console.log('\n📋 ШАГ 2: Удаление существующего пользователя');
-      console.log('-----------------------------------------------');
-      const deleted = await deleteUser(TEST_EMAIL);
-      if (!deleted) {
-        success = false;
-      }
-    } else {
-      console.log('\n📋 ШАГ 2: Пользователь не существует, пропускаем удаление');
-      console.log('----------------------------------------------------------');
+    // Шаг 2: Всегда пытаемся удалить пользователя (на всякий случай)
+    console.log('\n📋 ШАГ 2: Удаление пользователя (если существует)');
+    console.log('--------------------------------------------------');
+    const deleted = await deleteUser(TEST_EMAIL);
+    if (!deleted) {
+      console.log('⚠️  Не удалось удалить пользователя, но продолжаем тест');
     }
     
     // Шаг 3: Отправляем код подтверждения

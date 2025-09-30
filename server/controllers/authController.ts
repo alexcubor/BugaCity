@@ -7,7 +7,7 @@ import path from 'path';
 class AuthController {
   private emailVerificationCodes = new Map<string, { code: string, expires: number }>();
 
-  private readSecret(secretName: string, envVar: string, fallback: string = ''): string {
+  private readSecret(secretName: string, envVar: string): string | null {
     if (process.env[envVar]) {
       return process.env[envVar]!;
     }
@@ -19,13 +19,16 @@ class AuthController {
         return fs.readFileSync(`secrets/${secretName}.txt`, 'utf8').trim();
       } catch (error2) {
         console.error(`Failed to read ${secretName} from both paths:`, error2);
-        return fallback;
+        return null;
       }
     }
   }
 
   public getJwtSecret(): string {
-    const secret = this.readSecret('jwt_secret', 'JWT_SECRET', 'secret');
+    const secret = this.readSecret('jwt_secret', 'JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET не найден! Проверьте файл secrets/jwt_secret.txt или переменную окружения JWT_SECRET');
+    }
     return secret;
   }
 
@@ -85,15 +88,42 @@ class AuthController {
         return null;
       }
 
+      // Проверяем Content-Type
+      const contentType = response.headers.get('content-type');
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!contentType || !allowedTypes.includes(contentType)) {
+        console.error('❌ Неподдерживаемый тип файла:', contentType);
+        return null;
+      }
+
+      // Проверяем размер файла (максимум 5MB)
+      const contentLength = response.headers.get('content-length');
+      if (contentLength && parseInt(contentLength) > 5 * 1024 * 1024) {
+        console.error('❌ Файл слишком большой:', contentLength);
+        return null;
+      }
+
       const buffer = await response.arrayBuffer();
-      const extension = path.extname(avatarUrl) || '.jpg';
+      
+      // Дополнительная проверка размера после загрузки
+      if (buffer.byteLength > 5 * 1024 * 1024) {
+        console.error('❌ Файл слишком большой после загрузки:', buffer.byteLength);
+        return null;
+      }
+
+      // Определяем расширение на основе Content-Type
+      let extension = '.jpg';
+      if (contentType.includes('png')) extension = '.png';
+      else if (contentType.includes('gif')) extension = '.gif';
+      else if (contentType.includes('webp')) extension = '.webp';
+
       const filename = `avatar${extension}`;
       const filepath = path.join(userDir, filename);
 
       fs.writeFileSync(filepath, Buffer.from(buffer));
       
       const avatarRelativePath = path.join(relativePath, filename);
-      console.log('✅ Аватар сохранен:', { filepath, avatarRelativePath });
+      console.log('✅ Аватар сохранен:', { filepath, avatarRelativePath, contentType, size: buffer.byteLength });
       return avatarRelativePath;
     } catch (error) {
       console.error('❌ Ошибка при сохранении аватара:', error);
@@ -108,7 +138,11 @@ class AuthController {
 
   // Получение VK секрета
   public getVKSecret(): string {
-    return this.readSecret('vk_secret', 'VK_CLIENT_SECRET', '');
+    const secret = this.readSecret('vk_secret', 'VK_CLIENT_SECRET');
+    if (!secret) {
+      throw new Error('VK_CLIENT_SECRET не найден! Проверьте файл secrets/vk_secret.txt или переменную окружения VK_CLIENT_SECRET');
+    }
+    return secret;
   }
 
   // Получение Yandex Client ID (публичный, не секрет)
@@ -118,7 +152,11 @@ class AuthController {
 
   // Получение Yandex секрета
   public getYandexSecret(): string {
-    return this.readSecret('yandex_secret', 'YANDEX_CLIENT_SECRET', '');
+    const secret = this.readSecret('yandex_secret', 'YANDEX_CLIENT_SECRET');
+    if (!secret) {
+      throw new Error('YANDEX_CLIENT_SECRET не найден! Проверьте файл secrets/yandex_secret.txt или переменную окружения YANDEX_CLIENT_SECRET');
+    }
+    return secret;
   }
 
   // Генерация случайного кода
@@ -218,7 +256,8 @@ class AuthController {
         password: hashedPassword,
         name: name || '',
         glukocoins: 0,
-        rewards: ['pioneer']
+        rewards: ['pioneer'],
+        role: email === 'admin@bugacity.ru' ? 'admin' : 'user' // Первый админ
       };
        
       const user = await db.collection('users').insertOne(userData);
@@ -326,10 +365,6 @@ class AuthController {
     const yandexClientId = authController.getYandexClientId();
     const yandexClientSecret = authController.getYandexSecret();
     
-    console.log('🔍 Секреты получены:', { 
-      clientId: yandexClientId ? '***' : 'НЕ НАЙДЕН', 
-      clientSecret: yandexClientSecret ? '***' : 'НЕ НАЙДЕН' 
-    });
       
     const response = await fetch('https://oauth.yandex.ru/token', {
       method: 'POST',
@@ -500,14 +535,12 @@ class AuthController {
 
           user = await db.collection('users').findOne({ _id: result.insertedId });
           
-          console.log('🔍 Генерируем JWT токен для нового пользователя...');
           const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
           const origin = req.headers.origin || (req.headers.host && req.headers.host.includes('bugacity-docker.ru.tuna.am') 
             ? 'https://bugacity-docker.ru.tuna.am' 
             : req.headers.host && req.headers.host.includes('gluko.city')
               ? 'https://gluko.city'
               : 'https://bugacity-npm.ru.tuna.am');
-          console.log('🔍 JWT токен сгенерирован, origin:', origin);
           
           // Проверяем, является ли это мобильным устройством
           const userAgent = req.headers['user-agent'] || '';
@@ -542,7 +575,6 @@ class AuthController {
           await authController.downloadAndSaveAvatar(userData.avatar, user._id);
         }
 
-        console.log('🔍 Генерируем JWT токен для существующего пользователя...');
         const token = jwt.sign({ userId: user._id }, authController.getJwtSecret(), { expiresIn: '7d' });
         
         // Возвращаем HTML страницу, которая отправит сообщение в родительское окно
@@ -551,7 +583,6 @@ class AuthController {
           : req.headers.host && req.headers.host.includes('gluko.city')
             ? 'https://gluko.city'
             : 'https://bugacity-npm.ru.tuna.am');
-        console.log('🔍 JWT токен сгенерирован для существующего пользователя, origin:', origin);
         
         // Проверяем, является ли это мобильным устройством
         const userAgent = req.headers['user-agent'] || '';
@@ -668,9 +699,17 @@ class AuthController {
   async deleteUser(req: any, res: any) {
     try {
       const { email } = req.body;
+      const userEmail = req.user?.email; // Получаем email из токена
       
       if (!email) {
         return res.status(400).json({ error: 'Email обязателен' });
+      }
+
+      // Проверяем, что пользователь может удалять только себя
+      if (userEmail !== email) {
+        return res.status(403).json({ 
+          error: 'Недостаточно прав. Вы можете удалить только свой аккаунт.' 
+        });
       }
 
       const db = req.app.locals.db;
