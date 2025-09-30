@@ -234,6 +234,23 @@ class AuthController {
         return res.status(500).json({ error: 'Database not connected' });
       }
 
+      // 🔒 БЕЗОПАСНОСТЬ: Валидация пароля
+      if (!password) {
+        return res.status(400).json({ error: 'Пароль обязателен' });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
+      }
+
+      if (password.length > 128) {
+        return res.status(400).json({ error: 'Пароль слишком длинный' });
+      }
+
+      if (!/[a-zA-Z]/.test(password)) {
+        return res.status(400).json({ error: 'Пароль должен содержать хотя бы одну букву' });
+      }
+
       const storedData = authController.emailVerificationCodes.get(email);
       if (!storedData || storedData.code !== verificationCode || Date.now() > storedData.expires) {
         return res.status(400).json({ error: 'Неверный или устаревший код подтверждения' });

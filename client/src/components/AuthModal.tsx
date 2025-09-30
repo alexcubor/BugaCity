@@ -22,6 +22,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [emailError, setEmailError] = useState('');
   
   const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,17 +43,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     }
   }, [isOpen, email]);
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  };
-
   const handleEmailInput = (e: React.FormEvent<HTMLInputElement>) => {
     setEmail(e.currentTarget.value);
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -234,15 +230,87 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     console.error('Social login error:', error);
   };
 
+  // Валидация email
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailError('');
+      return true;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Некорректный формат email');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  // Валидация пароля
+  const validatePassword = (password: string) => {
+    if (!password) {
+      setPasswordError('Пароль обязателен');
+      return false;
+    }
+    
+    if (password.length < 6) {
+      setPasswordError('Пароль должен содержать минимум 6 символов');
+      return false;
+    }
+    
+    if (password.length > 128) {
+      setPasswordError('Пароль слишком длинный');
+      return false;
+    }
+    
+    if (!/[a-zA-Z]/.test(password)) {
+      setPasswordError('Пароль должен содержать хотя бы одну букву');
+      return false;
+    }
+    
+    setPasswordError('');
+    return true;
+  };
+
+  // Валидация подтверждения пароля
+  const validateConfirmPassword = (confirmPassword: string) => {
+    if (!confirmPassword) {
+      setConfirmPasswordError('');
+      return true;
+    }
+    
+    if (password !== confirmPassword) {
+      setConfirmPasswordError('Пароли не совпадают');
+      return false;
+    }
+    
+    setConfirmPasswordError('');
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log('🔍 Frontend - handleSubmit called:', { isLogin, email, password: password?.length });
     
-    // Проверяем совпадение паролей при регистрации
-    if (!isLogin && password !== confirmPassword) {
-      alert('Пароли не совпадают');
+    // Валидация полей
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = !isLogin ? validatePassword(password) : true;
+    const isConfirmPasswordValid = !isLogin ? validateConfirmPassword(confirmPassword) : true;
+    
+    if (!isEmailValid || !isPasswordValid || !isConfirmPasswordValid) {
       return;
+    }
+    
+    // Дополнительная проверка обязательности полей
+    if (!isLogin) {
+      if (!password) {
+        setPasswordError('Пароль обязателен');
+        return;
+      }
+      if (!confirmPassword) {
+        setConfirmPasswordError('Подтвердите пароль');
+        return;
+      }
     }
     
     const url = isLogin ? '/api/auth/login' : '/api/auth/register';
@@ -270,10 +338,70 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           onClose();
         }
       } else {
-        alert(result.error);
+        setMessage(result.error);
+        setMessageType('error');
       }
     } catch (error) {
-      alert('Ошибка');
+      setMessage('Ошибка соединения с сервером');
+      setMessageType('error');
+    }
+  };
+
+  // Обработчики для полей ввода
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    setEmailError(''); // Очищаем ошибку при вводе
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log('🔍 Изменение пароля:', value);
+    setPassword(value);
+    setPasswordError(''); // Очищаем ошибку при вводе
+  };
+
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setConfirmPassword(e.target.value);
+    setConfirmPasswordError(''); // Очищаем ошибку при вводе
+  };
+
+  // Валидация при нажатии Enter в поле пароля
+  const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && password) {
+      console.log('🔍 Enter нажат в поле пароля, пароль:', password);
+      e.currentTarget.blur();
+      if (isLogin) {
+        e.preventDefault();
+        handleSubmit(e);
+      } else {
+        // Валидируем пароль перед переходом к следующему шагу
+        let errorMessage = '';
+        
+        if (!password) {
+          errorMessage = 'Пароль обязателен';
+        } else if (password.length < 6) {
+          errorMessage = 'Пароль должен содержать минимум 6 символов';
+        } else if (password.length > 128) {
+          errorMessage = 'Пароль слишком длинный';
+        } else if (!/[a-zA-Z]/.test(password)) {
+          errorMessage = 'Пароль должен содержать хотя бы одну букву';
+        }
+        
+        console.log('🔍 Валидация пароля:', { password, errorMessage });
+        
+        if (errorMessage) {
+          console.log('🔍 Пароль невалиден, показываем ошибку:', errorMessage);
+          setPasswordError(errorMessage);
+          setMessage(errorMessage);
+          setMessageType('error');
+        } else {
+          console.log('🔍 Пароль валиден, переходим к следующему шагу');
+          setPasswordError('');
+          setMessage(''); // Очищаем сообщение об ошибке
+          setMessageType(''); // Очищаем тип сообщения
+          handlePasswordNext();
+        }
+      }
     }
   };
 
@@ -288,6 +416,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     setVerificationCode('');
     setMessage('');
     setMessageType('');
+    setPasswordError('');
+    setConfirmPasswordError('');
+    setEmailError('');
   };
 
   if (!isOpen) return null;
@@ -318,6 +449,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                     }
                   }}
                   required
+                  style={{
+                    borderColor: emailError ? '#ff4444' : '',
+                    borderWidth: emailError ? '2px' : '1px'
+                  }}
                 />
               </div>
             ) : showVerification && !showPassword ? (
@@ -334,7 +469,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   />
                 </div>
                 <div className="form-field slide-in">
-                  <label>Verification Code:</label>
+                  <label>Код подтверждения:</label>
                   <input
                     type="text"
                     value={verificationCode}
@@ -365,7 +500,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                 </div>
                 {!isLogin && (
                   <div className="form-field slide-out">
-                    <label>Verification Code:</label>
+                    <label>Код подтверждения:</label>
                     <input
                       type="text"
                       value={verificationCode}
@@ -376,23 +511,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   </div>
                 )}
                 <div className="form-field slide-in">
-                  <label>Password:</label>
+                  <label>Пароль:</label>
                   <input
                     type="password"
                     value={password}
                     onChange={handlePasswordChange}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && password) {
-                        e.currentTarget.blur();
-                        if (isLogin) {
-                          e.preventDefault();
-                          handleSubmit(e);
-                        } else {
-                          handlePasswordNext();
-                        }
+                    onKeyDown={handlePasswordKeyDown}
+                    onKeyPress={(e) => {
+                      console.log('🔍 KeyPress в поле пароля:', e.key);
+                      if (e.key === 'Enter') {
+                        console.log('🔍 Enter нажат в поле пароля через KeyPress');
                       }
                     }}
                     required
+                    style={{
+                      borderColor: passwordError ? '#ff4444' : '',
+                      borderWidth: passwordError ? '2px' : '1px'
+                    }}
                   />
                 </div>
               </>
@@ -410,7 +545,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   />
                 </div>
                 <div className="form-field slide-out">
-                  <label>Verification Code:</label>
+                  <label>Код подтверждения:</label>
                   <input
                     type="text"
                     value={verificationCode}
@@ -420,7 +555,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   />
                 </div>
                 <div className="form-field slide-out">
-                  <label>Password:</label>
+                  <label>Пароль:</label>
                   <input
                     type="password"
                     value={password}
@@ -430,11 +565,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   />
                 </div>
                 <div className="form-field slide-in">
-                  <label>Confirm Password:</label>
+                  <label>Подтвердите пароль:</label>
                   <input
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={handleConfirmPasswordChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && confirmPassword) {
                         e.currentTarget.blur();
@@ -443,6 +578,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                       }
                     }}
                     required
+                    style={{
+                      borderColor: confirmPasswordError ? '#ff4444' : '',
+                      borderWidth: confirmPasswordError ? '2px' : '1px'
+                    }}
                   />
                 </div>
               </>

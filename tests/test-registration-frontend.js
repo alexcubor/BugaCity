@@ -12,20 +12,29 @@ async function deleteUserFromDB(email) {
     
     // Сначала пытаемся войти, чтобы получить токен
     let token = null;
-    try {
-      const loginResponse = await fetch(`${config.api.baseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: '111' })
-      });
-      
-      if (loginResponse.ok) {
-        const loginData = await loginResponse.json();
-        token = loginData.token;
-        console.log(`🔑 Получен токен для удаления пользователя`);
+    const passwords = ['111', '111111a', '111111'];
+    
+    for (const password of passwords) {
+      try {
+        const loginResponse = await fetch(`${config.api.baseUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (loginResponse.ok) {
+          const loginData = await loginResponse.json();
+          token = loginData.token;
+          console.log(`🔑 Получен токен для удаления пользователя с паролем: ${password}`);
+          break;
+        }
+      } catch (loginError) {
+        console.log(`ℹ️  Не удалось войти с паролем: ${password}`);
       }
-    } catch (loginError) {
-      console.log(`ℹ️  Не удалось войти под пользователем (возможно, не существует)`);
+    }
+    
+    if (!token) {
+      console.log(`ℹ️  Не удалось войти под пользователем ни с одним паролем`);
     }
     
     // Теперь пытаемся удалить пользователя
@@ -58,12 +67,44 @@ async function logoutUser(page) {
   console.log(`🚪 Выходим из системы...`);
   
   try {
-    // Проверяем, авторизован ли пользователь
+    // 1. Принудительно выходим через API (если есть токен)
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    if (token) {
+      console.log('🚪 Принудительный выход через API...');
+      try {
+        await fetch(`${config.api.baseUrl}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        console.log('✅ API выход выполнен');
+      } catch (apiError) {
+        console.log('ℹ️  API выход не удался, продолжаем через UI');
+      }
+    }
+    
+    // 2. Очищаем localStorage и sessionStorage
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    console.log('✅ Локальное хранилище очищено');
+    
+    // 3. Принудительно обновляем страницу
+    await page.reload({ waitUntil: 'networkidle' });
+    console.log('✅ Страница обновлена');
+    
+    // 4. Проверяем, авторизован ли пользователь после обновления
     const isLoggedIn = await page.isVisible('.user-menu, .logout-button');
     if (!isLoggedIn) {
-      console.log(`ℹ️  Пользователь не авторизован`);
+      console.log(`✅ Пользователь не авторизован`);
       return true;
     }
+    
+    // 5. Если все еще авторизован, пытаемся выйти через UI
+    console.log('🚪 Пытаемся выйти через UI...');
     
     // Проверяем, не блокирует ли модальное окно с наградой
     const rewardModalVisible = await page.isVisible('.modal-overlay');
@@ -90,6 +131,97 @@ async function logoutUser(page) {
 }
 
 // Функция тестирования регистрации через email
+// Функция для тестирования валидации паролей
+async function testPasswordValidation(page, email, password, expectedError) {
+  console.log(`🔒 Тестируем пароль: "${password}" (ожидаем: "${expectedError}")`);
+  
+  try {
+    // Проверяем, открыто ли модальное окно
+    const modalVisible = await page.isVisible('.auth-modal');
+    
+    if (!modalVisible) {
+      // Если модальное окно не открыто, открываем его
+      await page.click('.login-button');
+      await page.waitForTimeout(1000);
+
+      // Переходим на вкладку "Регистрация" - используем XPath селектор
+      await page.click('//*[@id="root"]/div/div[3]/div/button[2]');
+      await page.waitForTimeout(500);
+
+      // Заполняем email и отправляем код
+      await page.fill('input[type="email"]', email);
+      await page.press('input[type="email"]', 'Enter');
+      await page.waitForTimeout(2000);
+
+      // Заполняем код подтверждения - используем XPath селектор
+      await page.fill('//*[@id="root"]/div/div[3]/div/form/div[1]/div[2]/input', '111111');
+      await page.press('//*[@id="root"]/div/div[3]/div/form/div[1]/div[2]/input', 'Enter');
+      await page.waitForTimeout(2000);
+    }
+
+    // Заполняем поле пароля и нажимаем Enter
+    await page.fill('input[type="password"]', password);
+    await page.press('input[type="password"]', 'Enter');
+    await page.waitForTimeout(500);
+
+    // Проверяем результат валидации
+    const messageElement = await page.locator('.message.error');
+    const messageText = await messageElement.textContent();
+    
+    if (expectedError === null) {
+      // Ожидаем, что пароль пройдет валидацию (нет ошибки)
+      if (!messageText || messageText.trim() === '') {
+        console.log(`✅ Пароль "${password}" корректно прошел валидацию`);
+        
+        // Проверяем, что появилось поле подтверждения пароля
+        const confirmPasswordField = await page.locator('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=password]');
+        const isVisible = await confirmPasswordField.isVisible();
+        if (isVisible) {
+          console.log(`✅ Поле подтверждения пароля появилось`);
+          
+          // Заполняем поле подтверждения пароля
+          await confirmPasswordField.fill(password);
+          console.log(`✅ Поле подтверждения пароля заполнено`);
+          
+          await page.waitForTimeout(200);
+          return true;
+        } else {
+          console.log(`❌ ОШИБКА: Поле подтверждения пароля не появилось`);
+          await page.waitForTimeout(200);
+          return false;
+        }
+      } else {
+        console.log(`❌ ОШИБКА: Пароль "${password}" должен был пройти валидацию, но получили ошибку: "${messageText}"`);
+        await page.waitForTimeout(200);
+        return false;
+      }
+    } else {
+      // Ожидаем ошибку валидации
+      if (messageText && messageText.includes(expectedError)) {
+        console.log(`✅ Пароль "${password}" корректно отклонен: ${messageText}`);
+        await page.waitForTimeout(200);
+        return true;
+      } else {
+        console.log(`❌ ОШИБКА: Ожидали "${expectedError}", получили "${messageText || 'нет ошибки'}"`);
+        await page.waitForTimeout(200);
+        return false;
+      }
+    }
+  } catch (error) {
+    console.log(`❌ Ошибка при тестировании пароля "${password}":`, error.message);
+    
+    // Закрываем модальное окно при ошибке
+    try {
+      await page.click('.close-button');
+      await page.waitForTimeout(500);
+    } catch (closeError) {
+      console.log('ℹ️  Не удалось закрыть модальное окно, продолжаем');
+    }
+    
+    return false;
+  }
+}
+
 async function testEmailRegistration(page, email, password) {
   console.log(`\n📧 Тестируем регистрацию через email: ${email}`);
   
@@ -279,8 +411,26 @@ async function runEmailRegistrationTest() {
     // 3. НЕ очищаем localStorage и sessionStorage - это может нарушить работу браузера
     console.log('ℹ️  Сохраняем данные браузера для стабильности...');
     
-    // 4. Тестируем регистрацию через email
-    const result = await testEmailRegistration(page, 'sdiz@ya.ru', '111');
+    // 4. Тестируем валидацию паролей
+    console.log('\n🔒 ТЕСТИРОВАНИЕ ВАЛИДАЦИИ ПАРОЛЕЙ:');
+    console.log('=====================================');
+    
+    const passwordTests = [
+      { password: '111', expectedError: 'Пароль должен содержать минимум 6 символов' },
+      { password: '111111', expectedError: 'Пароль должен содержать хотя бы одну букву' },
+      { password: '111111a', expectedError: null } // Правильный пароль, должен пройти
+    ];
+    
+    let passwordTestsPassed = 0;
+    for (const test of passwordTests) {
+      const passed = await testPasswordValidation(page, 'sdiz@ya.ru', test.password, test.expectedError);
+      if (passed) passwordTestsPassed++;
+    }
+    
+    console.log(`\n📊 Результаты валидации паролей: ${passwordTestsPassed}/${passwordTests.length} тестов пройдено`);
+
+    // 5. Тестируем регистрацию через email
+    const result = await testEmailRegistration(page, 'sdiz@ya.ru', '111111a');
     
     // Выводим результат
     console.log('\n📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ:');
@@ -313,4 +463,4 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-module.exports = { runEmailRegistrationTest, testEmailRegistration };
+module.exports = { runEmailRegistrationTest, testEmailRegistration, testPasswordValidation };

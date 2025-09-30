@@ -3,7 +3,7 @@ const axios = require('axios');
 // Конфигурация
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:3000';
 const TEST_EMAIL = 'sdiz@ya.ru';
-const TEST_PASSWORD = '111';
+const TEST_PASSWORD = '111111a';
 const TEST_VERIFICATION_CODE = '111111';
 
 console.log('🧪 ТЕСТ BACKEND РЕГИСТРАЦИИ');
@@ -132,6 +132,31 @@ async function loginUser(email, password) {
 }
 
 // Основная функция тестирования
+// Функция для тестирования валидации паролей
+async function testPasswordValidation(email, password, expectedError) {
+  console.log(`🔒 Тестируем пароль: "${password}" (ожидаем: "${expectedError}")`);
+  
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      email: email,
+      password: password,
+      verificationCode: TEST_VERIFICATION_CODE
+    });
+    
+    console.log(`❌ ОШИБКА: Пароль "${password}" прошел валидацию, но не должен был!`);
+    return false;
+  } catch (error) {
+    const actualError = error.response?.data?.error;
+    if (actualError === expectedError) {
+      console.log(`✅ Пароль "${password}" корректно отклонен: ${actualError}`);
+      return true;
+    } else {
+      console.log(`❌ ОШИБКА: Ожидали "${expectedError}", получили "${actualError}"`);
+      return false;
+    }
+  }
+}
+
 async function runBackendTest() {
   console.log('🚀 НАЧИНАЕМ ТЕСТИРОВАНИЕ BACKEND');
   console.log('==================================');
@@ -151,6 +176,24 @@ async function runBackendTest() {
     if (!deleted) {
       console.log('⚠️  Не удалось удалить пользователя, но продолжаем тест');
     }
+
+    // Шаг 2.5: Тестируем валидацию паролей
+    console.log('\n🔒 ШАГ 2.5: Тестирование валидации паролей');
+    console.log('--------------------------------------------------');
+    
+    const passwordTests = [
+      { password: '111', expectedError: 'Пароль должен содержать минимум 6 символов' },
+      { password: '111111', expectedError: 'Пароль должен содержать хотя бы одну букву' },
+      { password: 'a'.repeat(129), expectedError: 'Пароль слишком длинный' }
+    ];
+    
+    let passwordTestsPassed = 0;
+    for (const test of passwordTests) {
+      const passed = await testPasswordValidation(TEST_EMAIL, test.password, test.expectedError);
+      if (passed) passwordTestsPassed++;
+    }
+    
+    console.log(`\n📊 Результаты валидации паролей: ${passwordTestsPassed}/${passwordTests.length} тестов пройдено`);
     
     // Шаг 3: Отправляем код подтверждения
     console.log('\n📋 ШАГ 3: Отправка кода подтверждения');
@@ -160,8 +203,8 @@ async function runBackendTest() {
       success = false;
     }
     
-    // Шаг 4: Регистрируем пользователя
-    console.log('\n📋 ШАГ 4: Регистрация пользователя');
+    // Шаг 4: Регистрируем пользователя с правильным паролем
+    console.log('\n📋 ШАГ 4: Регистрация пользователя с правильным паролем');
     console.log('-----------------------------------');
     const registrationResult = await registerUser(TEST_EMAIL, TEST_PASSWORD, TEST_VERIFICATION_CODE);
     if (!registrationResult) {
