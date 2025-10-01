@@ -146,11 +146,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
       if (checkResult.exists) {
         setMessage('Пользователь с такой почтой уже существует');
         setMessageType('error');
-        console.log('Email уже существует:', checkResult);
         return;
       }
 
-      console.log('Email свободен, отправляем код');
       // Сразу показываем поле для ввода кода и сообщение
       setIsCodeSent(true);
       setMessage('Код подтверждения отправлен на вашу почту');
@@ -164,7 +162,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
       // Отправляем код в фоне (не ждем ответа)
       sendVerificationCodeInBackground();
     } catch (error) {
-      console.error('Ошибка проверки email:', error);
       setMessage('Ошибка проверки email');
       setMessageType('error');
     }
@@ -248,22 +245,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   // Валидация пароля
   const validatePassword = (password: string) => {
     if (!password) {
-      setPasswordError('Пароль обязателен');
+      const errorMsg = 'Пароль обязателен';
+      setPasswordError(errorMsg);
+      setMessage(errorMsg);
+      setMessageType('error');
       return false;
     }
     
     if (password.length < 6) {
-      setPasswordError('Пароль должен содержать минимум 6 символов');
+      const errorMsg = 'Пароль должен содержать минимум 6 символов';
+      setPasswordError(errorMsg);
+      setMessage(errorMsg);
+      setMessageType('error');
       return false;
     }
     
     if (password.length > 128) {
-      setPasswordError('Пароль слишком длинный');
+      const errorMsg = 'Пароль слишком длинный';
+      setPasswordError(errorMsg);
+      setMessage(errorMsg);
+      setMessageType('error');
       return false;
     }
     
     if (!/[a-zA-Z]/.test(password)) {
-      setPasswordError('Пароль должен содержать хотя бы одну букву');
+      const errorMsg = 'Пароль должен содержать хотя бы одну букву';
+      setPasswordError(errorMsg);
+      setMessage(errorMsg);
+      setMessageType('error');
       return false;
     }
     
@@ -290,7 +299,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🔍 Frontend - handleSubmit called:', { isLogin, email, password: password?.length });
     
     // Валидация полей
     const isEmailValid = validateEmail(email);
@@ -316,7 +324,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     const url = isLogin ? '/api/auth/login' : '/api/auth/register';
     const data = isLogin ? { email, password } : { email, password, verificationCode };
     
-    console.log('🔍 Frontend - Sending data:', data);
     
     try {
       const response = await fetch(url, {
@@ -355,7 +362,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    console.log('🔍 Изменение пароля:', value);
     setPassword(value);
     setPasswordError(''); // Очищаем ошибку при вводе
   };
@@ -368,39 +374,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   // Валидация при нажатии Enter в поле пароля
   const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && password) {
-      console.log('🔍 Enter нажат в поле пароля, пароль:', password);
       e.currentTarget.blur();
       if (isLogin) {
         e.preventDefault();
         handleSubmit(e);
       } else {
         // Валидируем пароль перед переходом к следующему шагу
-        let errorMessage = '';
+        const isPasswordValid = validatePassword(password);
         
-        if (!password) {
-          errorMessage = 'Пароль обязателен';
-        } else if (password.length < 6) {
-          errorMessage = 'Пароль должен содержать минимум 6 символов';
-        } else if (password.length > 128) {
-          errorMessage = 'Пароль слишком длинный';
-        } else if (!/[a-zA-Z]/.test(password)) {
-          errorMessage = 'Пароль должен содержать хотя бы одну букву';
-        }
-        
-        console.log('🔍 Валидация пароля:', { password, errorMessage });
-        
-        if (errorMessage) {
-          console.log('🔍 Пароль невалиден, показываем ошибку:', errorMessage);
-          setPasswordError(errorMessage);
-          setMessage(errorMessage);
-          setMessageType('error');
-        } else {
-          console.log('🔍 Пароль валиден, переходим к следующему шагу');
-          setPasswordError('');
+        if (isPasswordValid) {
           setMessage(''); // Очищаем сообщение об ошибке
           setMessageType(''); // Очищаем тип сообщения
           handlePasswordNext();
         }
+        // Если валидация не прошла, validatePassword уже установил сообщение об ошибке
       }
     }
   };
@@ -518,9 +505,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                     onChange={handlePasswordChange}
                     onKeyDown={handlePasswordKeyDown}
                     onKeyPress={(e) => {
-                      console.log('🔍 KeyPress в поле пароля:', e.key);
                       if (e.key === 'Enter') {
-                        console.log('🔍 Enter нажат в поле пароля через KeyPress');
                       }
                     }}
                     required
@@ -669,7 +654,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                 </button>
                 <button 
                   type="button" 
-                  onClick={handlePasswordNext}
+                  onClick={() => {
+                    const isPasswordValid = validatePassword(password);
+                    if (isPasswordValid) {
+                      setMessage('');
+                      setMessageType('');
+                      handlePasswordNext();
+                    }
+                    // Если валидация не прошла, validatePassword уже установил сообщение об ошибке
+                  }}
                   disabled={!password}
                   style={{ flex: '1' }}
                 >

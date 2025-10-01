@@ -36,7 +36,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   rewardPrice,
   rewardDescription
 }) => {
-  console.log('🔍 RewardViewer props:', { rewardId, rewardName, rewardPrice, rewardDescription });
   
   const [isLoading, setIsLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
@@ -390,10 +389,8 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
                 const font = new FontFace('Bad Script', 'url(/fonts/BadScript-Regular.ttf)');
                 await font.load();
                 (document.fonts as any).add(font);
-                console.log('✅ Локальный Bad Script загружен');
                 resolve(void 0);
               } catch (error) {
-                console.warn('⚠️ Ошибка загрузки локального шрифта:', error);
                 resolve(void 0);
               }
             }).then(() => {
@@ -401,14 +398,12 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
               // Рисуем имя пользователя сверху
               textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
               textureContext.font = '400 68px "Bad Script"';
-              console.log('🔍 Установлен шрифт для имени:', textureContext.font);
               textureContext.textAlign = 'center';
               textureContext.textBaseline = 'middle';
               textureContext.fillText(userName, 0, -50);
               
               textureContext.fillStyle = '#8C5502'; // Темно-золотистый цвет
               textureContext.font = '400 42px "Bad Script"';
-              console.log('🔍 Установлен шрифт для подписи:', textureContext.font);
               textureContext.textAlign = 'center';
               textureContext.textBaseline = 'middle';
               textureContext.fillText('· Среди первых ·', 0, 50);

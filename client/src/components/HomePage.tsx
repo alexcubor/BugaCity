@@ -72,11 +72,9 @@ const HomePage: React.FC = () => {
   // Загружаем данные наград
   const loadRewardsData = async () => {
     try {
-      console.log('🔍 Loading rewards data...');
       const response = await fetch('/api/rewards');
       if (response.ok) {
         const allRewards = await response.json();
-        console.log('🔍 Loaded rewards:', allRewards);
         setRewardsData(allRewards);
       } else {
         console.error('Ошибка загрузки наград:', response.status, response.statusText);
@@ -88,17 +86,12 @@ const HomePage: React.FC = () => {
 
   // Получаем данные выбранной награды
   const getSelectedRewardData = (rewardId: string) => {
-    console.log('🔍 getSelectedRewardData called with rewardId:', rewardId);
-    console.log('🔍 rewardsData:', rewardsData);
     const found = rewardsData.find(reward => reward.id === rewardId) || null;
-    console.log('🔍 found reward:', found);
     return found;
   };
 
   // Единая функция для открытия модального окна награды
   const openRewardModal = (userParam: string, rewardParam: string) => {
-    console.log('🔍 openRewardModal called with:', { userParam, rewardParam });
-    console.log('🔍 rewardsData length:', rewardsData.length);
     
     // Проверяем, является ли это ID пользователя (MongoDB ObjectId или числовой ID)
     const isMongoId = userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam);
@@ -151,12 +144,9 @@ const HomePage: React.FC = () => {
       const user = urlParams.get('user');
       const isNewUser = urlParams.get('isNewUser');
       
-      console.log('🔍 checkUrl called with:', { userParam, rewardParam, token, user, isNewUser });
-      console.log('🔍 rewardsData length:', rewardsData.length);
       
       // Обрабатываем OAuth callback для мобильных устройств
       if (token && user) {
-        console.log('🔍 Обрабатываем OAuth callback для мобильного устройства');
         localStorage.setItem('token', token);
         
         // Очищаем URL от параметров OAuth
@@ -191,9 +181,7 @@ const HomePage: React.FC = () => {
   }, [showRewardModal]);
 
   const loadUserData = async () => {
-    console.log('loadUserData вызван');
     if (isLoadingUser) {
-      console.log('loadUserData уже выполняется, пропускаем');
       return;
     }
     setIsLoadingUser(true);
@@ -210,18 +198,13 @@ const HomePage: React.FC = () => {
         const userData = await response.json();
         setUser(userData);
         
-        console.log('Данные пользователя:', userData);
         // Проверяем, есть ли имя у пользователя
         if (!userData.name || userData.name.trim() === '') {
-          console.log('Имя отсутствует, показываем модальное окно');
           setShowNameModal(true);
         } else {
-          console.log('Имя есть:', userData.name);
           // Если у пользователя есть имя, проверяем награду Pioneer
           if (userData.rewards && userData.rewards.includes('pioneer')) {
-            console.log('Награда Pioneer найдена у пользователя');
           } else {
-            console.log('Награда Pioneer не найдена');
           }
         }
       }
@@ -241,19 +224,15 @@ const HomePage: React.FC = () => {
   };
 
   const handleNameSubmit = async (name: string) => {
-    console.log('handleNameSubmit вызван с именем:', name);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Токен не найден');
         return;
       }
 
       const payload = JSON.parse(atob(token.split('.')[1]));
       const userId = payload.userId;
-      console.log('userId:', userId);
 
-      console.log('Отправляем запрос на обновление имени...');
       const response = await fetch(`/api/users/me/update-name`, {
         method: 'POST',
         headers: {
@@ -263,17 +242,14 @@ const HomePage: React.FC = () => {
         body: JSON.stringify({ name })
       });
 
-      console.log('Ответ на обновление имени:', response.status);
       if (response.ok) {
         const result = await response.json();
-        console.log('Результат обновления имени:', result);
         
         setUser({ ...user, name });
         setShowNameModal(false);
         
         // Попытка выдать награду, если её ещё нет
         if (!user.rewards || !user.rewards.includes('pioneer')) {
-          console.log('Попытка выдать награду Pioneer...');
           try {
             const rewardResponse = await fetch(`/api/users/${encodeURIComponent(user.email)}/add-rewards`, {
               method: 'POST',
@@ -285,13 +261,10 @@ const HomePage: React.FC = () => {
 
             if (rewardResponse.ok) {
               const rewardResult = await rewardResponse.json();
-              console.log('Награда успешно выдана:', rewardResult);
               setUser((prev: any) => ({ ...prev, rewards: [...(prev.rewards || []), 'pioneer'] }));
             } else {
-              console.log('Награда уже есть у пользователя или ошибка выдачи');
             }
           } catch (error) {
-            console.log('Ошибка при выдаче награды:', error);
           }
         }
         
@@ -303,7 +276,6 @@ const HomePage: React.FC = () => {
         url.searchParams.set('user', userId); // Используем ID пользователя
         url.searchParams.set('reward', 'pioneer'); // Потом награда
         window.history.pushState({}, '', url);
-        console.log('Перенаправляем на награду Pioneer для пользователя ID:', userId);
       } else {
         const errorText = await response.text();
         console.error('Ошибка обновления имени:', errorText);
@@ -349,7 +321,6 @@ const HomePage: React.FC = () => {
             <button
               className="login-button"
               onClick={() => {
-                console.log('Login button clicked, opening AuthModal');
                 setShowAuthModal(true);
               }}
             >

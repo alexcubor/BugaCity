@@ -48,10 +48,8 @@ class AuthController {
         nextId = '1'.padStart(12, '0');
       }
       
-      console.log('🔍 Генерируем инкрементальный ID:', nextId);
       return nextId;
     } catch (error) {
-      console.error('❌ Ошибка генерации ID:', error);
       const timestamp = Date.now().toString();
       const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
       return timestamp + random;
@@ -290,7 +288,6 @@ class AuthController {
         pioneerNumber: 1
       });
     } catch (error) {
-      console.error('❌ Ошибка в register:', error);
       res.status(500).json({ error: 'Ошибка регистрации' });
     }
   }

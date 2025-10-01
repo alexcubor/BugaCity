@@ -162,8 +162,6 @@ function UserMenu({ onLogout }: UserMenuProps) {
   };
 
   const handleRewardClick = (reward: string) => {
-    console.log('User data:', user);
-    console.log('User ID:', user?.id);
     setSelectedReward(reward);
     // Обновляем URL с ID пользователя для возможности поделиться ссылкой
     const url = new URL(window.location.href);
@@ -171,9 +169,7 @@ function UserMenu({ onLogout }: UserMenuProps) {
       url.searchParams.set('user', user.id);
       url.searchParams.set('reward', reward);
       window.history.pushState({}, '', url);
-      console.log('URL обновлен:', url.toString());
     } else {
-      console.error('User ID не найден! User object:', user);
     }
   };
 
