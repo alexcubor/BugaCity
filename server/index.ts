@@ -17,6 +17,9 @@ dotenv.config({ path: '.env.dev' });
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// Настраиваем Express для работы за прокси (Nginx)
+app.set('trust proxy', 1);
+
 // Шаг 1: Расширенный Helmet с дополнительными защитами
 app.use(helmet({
   contentSecurityPolicy: false, // Отключаем CSP пока что
@@ -119,6 +122,9 @@ if (!disableRateLimit) {
   });
 
   app.use(limiter);
+  
+  // Сохраняем ссылку на limiter для возможности сброса
+  app.locals.limiter = limiter;
 }
 
 // Auth rate limiting только для продакшена
@@ -143,6 +149,9 @@ if (!disableRateLimit) {
 
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
+  
+  // Сохраняем ссылку на authLimiter для возможности сброса
+  app.locals.authLimiter = authLimiter;
 }
 
 app.use(express.json());

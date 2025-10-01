@@ -745,6 +745,57 @@ class AuthController {
       res.status(500).json({ error: 'Ошибка сервера' });
     }
   }
+
+  // Сброс rate limiting (только для админов)
+  async resetRateLimit(req: any, res: any) {
+    try {
+      // Проверяем, что пользователь админ
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'Не авторизован' });
+      }
+
+      const db = req.app.locals.db;
+      if (!db) {
+        return res.status(500).json({ error: 'База данных недоступна' });
+      }
+
+      const user = await db.collection('users').findOne({ _id: userId });
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Доступ запрещен. Требуются права администратора' });
+      }
+
+      // Сбрасываем rate limiting без перезапуска сервера
+      console.log('🔄 Админ сбросил rate limiting');
+      
+      // Получаем доступ к rate limiter'ам из app.locals
+      const { limiter, authLimiter } = req.app.locals;
+      
+      if (limiter && limiter.resetKey) {
+        // Сбрасываем общий rate limiter
+        limiter.resetKey('*'); // Сбрасываем для всех IP
+        console.log('✅ Общий rate limiter сброшен');
+      }
+      
+      if (authLimiter && authLimiter.resetKey) {
+        // Сбрасываем auth rate limiter
+        authLimiter.resetKey('*'); // Сбрасываем для всех IP
+        console.log('✅ Auth rate limiter сброшен');
+      }
+
+      res.json({ 
+        message: 'Rate limiting сброшен успешно',
+        timestamp: new Date().toISOString(),
+        details: {
+          generalLimiter: limiter ? 'сброшен' : 'не найден',
+          authLimiter: authLimiter ? 'сброшен' : 'не найден'
+        }
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при сбросе rate limiting:', error);
+      res.status(500).json({ error: 'Ошибка сервера' });
+    }
+  }
 }
 
 export const authController = new AuthController();

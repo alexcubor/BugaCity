@@ -29,4 +29,7 @@ router.get('/vk-user', authController.getVKUser);
 // Delete user (требует авторизации)
 router.post('/delete-user', authenticateToken, authController.deleteUser);
 
+// Reset rate limiting (только для админов)
+router.post('/reset-rate-limit', authenticateToken, authController.resetRateLimit);
+
 export default router;
