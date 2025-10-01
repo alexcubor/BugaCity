@@ -274,7 +274,7 @@ class AuthController {
         name: name || '',
         glukocoins: 0,
         rewards: ['pioneer'],
-        role: email === 'admin@bugacity.ru' ? 'admin' : 'user' // Первый админ
+        role: email === 'admin@buga.city' ? 'admin' : 'user' // Первый админ
       };
        
       const user = await db.collection('users').insertOne(userData);
