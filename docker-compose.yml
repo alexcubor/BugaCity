@@ -58,6 +58,8 @@ services:
       - mongodb
     networks:
       - bugacity-network
+    volumes:
+      - uploads_data:/app/uploads
 
   # Nginx Reverse Proxy
   nginx:
@@ -78,6 +80,7 @@ volumes:
   mongo_prod_data:
     external: true
     name: mongodb_data
+  uploads_data:
 
 networks:
   bugacity-network:

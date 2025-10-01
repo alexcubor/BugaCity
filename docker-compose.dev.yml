@@ -44,6 +44,7 @@ services:
       YANDEX_CLIENT_ID: 03e35996472d40e3b0d980943e545cb8
       YANDEX_CLIENT_SECRET_FILE: /run/secrets/yandex_secret
       REACT_APP_API_URL: http://localhost:3001/api
+      DISABLE_RATE_LIMIT: "true"
     secrets:
       - jwt_secret
       - vk_secret
@@ -56,6 +57,7 @@ services:
       - bugacity-network
     volumes:
       - ./client/public:/app/client/public:ro
+      - uploads_data:/app/uploads
 
   # Nginx Reverse Proxy
   nginx:
@@ -86,6 +88,7 @@ volumes:
   mongo_prod_data:
     external: true
     name: mongodb_data
+  uploads_data:
 
 networks:
   bugacity-network:

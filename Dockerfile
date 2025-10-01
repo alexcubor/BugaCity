@@ -39,6 +39,9 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nextjs:nodejs /app/client/public ./client/public
 
+# Создаем папку uploads с правильными правами (будет монтироваться как volume)
+RUN mkdir -p uploads && chown -R nextjs:nodejs uploads
+
 # Переключаемся на непривилегированного пользователя
 USER nextjs
 

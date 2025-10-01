@@ -89,10 +89,17 @@ app.use(cors({
 }));
 
 // Шаг 3: Rate Limiting с исключениями для OAuth и dev окружения
-const isDev = fs.existsSync('.env.dev');
+const disableRateLimit = process.env.DISABLE_RATE_LIMIT === 'true';
+
+// Логируем состояние rate limiting
+if (disableRateLimit) {
+  console.log('🔓 Rate limiting отключен (dev режим)');
+} else {
+  console.log('🔒 Rate limiting включен (продакшн режим)');
+}
 
 // Rate limiting только для продакшена
-if (!isDev) {
+if (!disableRateLimit) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 минут
     max: 100, // максимум 100 запросов с одного IP за 15 минут
@@ -115,7 +122,7 @@ if (!isDev) {
 }
 
 // Auth rate limiting только для продакшена
-if (!isDev) {
+if (!disableRateLimit) {
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 минут
     max: 5, // максимум 5 попыток входа за 15 минут
