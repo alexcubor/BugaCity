@@ -2,6 +2,7 @@ import express from 'express';
 import { ObjectId } from 'mongodb';
 import { authenticateToken } from '../middleware/auth';
 import { requireOwnership } from '../middleware/roles';
+import { deleteUserAndData } from '../utils/userDeletion';
 
 const router = express.Router();
 
@@ -110,13 +111,18 @@ router.delete('/me', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Database not connected' });
     }
 
-    const userId = (req as any).user?.userId;
-    const result = await db.collection('users').deleteOne({ _id: userId });
+    const userEmail = (req as any).user?.email;
+    if (!userEmail) {
+      return res.status(400).json({ error: 'Email пользователя не найден' });
+    }
+
+    // Используем общую функцию удаления
+    const result = await deleteUserAndData(db, userEmail);
     
-    if (result.deletedCount > 0) {
-      res.json({ message: 'Ваш аккаунт удален' });
+    if (result.success) {
+      res.json({ message: 'Ваш аккаунт и все данные удалены' });
     } else {
-      res.status(404).json({ error: 'Пользователь не найден' });
+      res.status(404).json({ error: result.message });
     }
   } catch (error) {
     res.status(500).json({ error: 'Ошибка при удалении аккаунта' });

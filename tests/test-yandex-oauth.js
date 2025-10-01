@@ -219,6 +219,59 @@ async function testYandexLogin(page) {
   }
 }
 
+// Функция для удаления текущего пользователя через API
+async function deleteCurrentUser(page) {
+  console.log(`\n🗑️  Удаляем текущего пользователя через API...`);
+  
+  try {
+    // Получаем токен из localStorage
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    if (!token) {
+      console.log('❌ Токен не найден, пользователь не авторизован');
+      return false;
+    }
+    
+    console.log('🔑 Токен найден, отправляем запрос на удаление...');
+    
+    // Отправляем DELETE запрос на /api/users/me
+    const response = await page.evaluate(async (authToken) => {
+      try {
+        const response = await fetch('/api/users/me', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        return { 
+          success: response.ok, 
+          status: response.status, 
+          data: data 
+        };
+      } catch (error) {
+        return { 
+          success: false, 
+          error: error.message 
+        };
+      }
+    }, token);
+    
+    if (response.success) {
+      console.log(`✅ Пользователь успешно удален:`, response.data);
+      return true;
+    } else {
+      console.log(`❌ Ошибка при удалении пользователя (статус: ${response.status}):`, response.data);
+      return false;
+    }
+    
+  } catch (error) {
+    console.error(`❌ Ошибка при удалении пользователя: ${error.message}`);
+    return false;
+  }
+}
+
 // Основная функция теста
 async function runYandexOAuthTest() {
   console.log('🚀 Запуск теста входа через Yandex OAuth');
@@ -296,6 +349,17 @@ async function runYandexOAuthTest() {
     
     // 3. Тестируем вход через Yandex OAuth
     const result = await testYandexLogin(page);
+    
+    // 4. Если тест прошел успешно, удаляем пользователя
+    if (result) {
+      console.log('\n🧹 Очистка после успешного теста...');
+      const deleteResult = await deleteCurrentUser(page);
+      if (deleteResult) {
+        console.log('✅ Пользователь и его данные удалены');
+      } else {
+        console.log('⚠️  Не удалось удалить пользователя, но тест прошел');
+      }
+    }
     
     // Выводим результат
     console.log('\n📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ:');

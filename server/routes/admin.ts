@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roles';
+import { deleteUserAndData } from '../utils/userDeletion';
 
 const router = express.Router();
 
@@ -75,12 +76,14 @@ router.delete('/users/:email', requireAdmin, async (req, res) => {
     }
 
     const { email } = req.params;
-    const result = await db.collection('users').deleteOne({ email });
     
-    if (result.deletedCount > 0) {
+    // Используем общую функцию удаления
+    const result = await deleteUserAndData(db, email);
+    
+    if (result.success) {
       res.json({ message: `Пользователь ${email} удален` });
     } else {
-      res.status(404).json({ error: 'Пользователь не найден' });
+      res.status(404).json({ error: result.message });
     }
   } catch (error) {
     res.status(500).json({ error: 'Ошибка при удалении пользователя' });
