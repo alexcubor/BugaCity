@@ -34,6 +34,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      DISABLE_RATE_LIMIT: "true"
       MONGODB_URI: mongodb://bugacity_user:bugacity_password@mongodb:27017/bugacity?authSource=bugacity
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
