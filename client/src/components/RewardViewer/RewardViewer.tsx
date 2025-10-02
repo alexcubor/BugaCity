@@ -683,7 +683,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             {/* Уведомление о копировании */}
             {showNotification && (
               <div className="copy-notification" onClick={(e) => e.stopPropagation()}>
-                Ссылка скопирована, поделись её с другом!
+                Ссылка скопирована, поделись ею с другом!
               </div>
             )}
             
