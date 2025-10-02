@@ -104,20 +104,29 @@ if (disableRateLimit) {
 // Rate limiting только для продакшена
 if (!disableRateLimit) {
   const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 минут
-    max: 1000, // максимум 1000 запросов с одного IP за 15 минут
+    windowMs: 1000, // 1 секунда
+    max: 3, // максимум 3 запроса в секунду (как у VK)
     message: {
       error: 'Слишком много запросов с этого IP, попробуйте позже',
-      retryAfter: '15 минут'
+      retryAfter: '1 секунда'
     },
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
-      // Пропускаем OAuth callback endpoints и OAuth инициализацию
+      // Пропускаем OAuth callback endpoints, OAuth инициализацию и API для соцсетей
       return req.path.includes('/api/auth/callback') || 
              req.path.includes('/api/auth/oauth') ||
              req.path.includes('/api/auth/yandex') ||
-             req.path.includes('/api/auth/vk');
+             req.path.includes('/api/auth/vk') ||
+             req.path.includes('/api/meta') || // Пропускаем мета-теги для соцсетей
+             req.path.includes('/api/rewards/') && req.path.includes('/preview') || // Пропускаем превью изображения
+             req.path.includes('/api/rewards') && req.method === 'GET' || // Пропускаем все GET запросы к наградам
+             req.path.includes('/images/') || // Пропускаем статические изображения
+             req.path.includes('/fonts/') || // Пропускаем шрифты
+             req.path.includes('/models/') || // Пропускаем 3D модели
+             req.path.includes('/textures/') || // Пропускаем текстуры
+             req.path === '/' || // Пропускаем главную страницу
+             req.path.includes('?user=') && req.path.includes('&reward='); // Пропускаем ссылки с параметрами наград
     }
   });
 
@@ -130,11 +139,11 @@ if (!disableRateLimit) {
 // Auth rate limiting только для продакшена
 if (!disableRateLimit) {
   const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 минут
-    max: 20, // максимум 20 попыток входа за 15 минут
+    windowMs: 5 * 60 * 1000, // 5 минут
+    max: 10, // максимум 10 попыток входа за 5 минут (более разумно)
     message: {
       error: 'Слишком много попыток входа, попробуйте позже',
-      retryAfter: '15 минут'
+      retryAfter: '5 минут'
     },
     standardHeaders: true,
     legacyHeaders: false,

@@ -320,15 +320,46 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       (camera as any).autoRotateSpeed = 0.5;
     }
 
-    // Добавляем обработчик клика по пустому месту для закрытия модального окна
+    // Добавляем умный обработчик клика по пустому месту
     if (isModal && onClose) {
+      let isClick = false;
+      let startTime = 0;
+      let startX = 0;
+      let startY = 0;
+      
       scene.onPointerObservable.add((pointerInfo) => {
         if (pointerInfo.type === 1) { // POINTERDOWN
           const pickResult = scene.pick(pointerInfo.event.offsetX, pointerInfo.event.offsetY);
-          // Если клик не попал в меш (пустое место), закрываем модальное окно
+          // Если клик не попал в меш (пустое место)
           if (!pickResult || !pickResult.hit || !pickResult.pickedMesh) {
-            onClose();
+            isClick = true;
+            startTime = Date.now();
+            startX = pointerInfo.event.clientX;
+            startY = pointerInfo.event.clientY;
           }
+        } else if (pointerInfo.type === 2) { // POINTERMOVE
+          if (isClick) {
+            const currentTime = Date.now();
+            const deltaX = Math.abs(pointerInfo.event.clientX - startX);
+            const deltaY = Math.abs(pointerInfo.event.clientY - startY);
+            
+            // Если движение больше 10px или прошло больше 200ms - это свайп, не клик
+            if (deltaX > 10 || deltaY > 10 || (currentTime - startTime) > 200) {
+              isClick = false;
+            }
+          }
+        } else if (pointerInfo.type === 3) { // POINTERUP
+          if (isClick) {
+            const currentTime = Date.now();
+            const deltaX = Math.abs(pointerInfo.event.clientX - startX);
+            const deltaY = Math.abs(pointerInfo.event.clientY - startY);
+            
+            // Если это был короткий клик без движения - закрываем окно
+            if (deltaX <= 10 && deltaY <= 10 && (currentTime - startTime) < 200) {
+              onClose();
+            }
+          }
+          isClick = false;
         }
       });
     }

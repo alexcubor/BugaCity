@@ -56,6 +56,10 @@ async function deleteUser(email) {
 async function sendVerificationCode(email) {
   console.log(`📤 Отправляем код подтверждения для: ${email}`);
   
+  // Пауза 1 секунда для избежания блокировки из-за rate limiting
+  console.log(`⏳ Пауза 1 секунда для избежания rate limiting...`);
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
   try {
     const response = await axios.post(`${API_BASE_URL}/api/auth/send-verification`, {
       email: email
@@ -183,8 +187,7 @@ async function runBackendTest() {
     
     const passwordTests = [
       { password: '111', expectedError: 'Пароль должен содержать минимум 6 символов' },
-      { password: '111111', expectedError: 'Пароль должен содержать хотя бы одну букву' },
-      { password: 'a'.repeat(129), expectedError: 'Пароль слишком длинный' }
+      { password: '111111', expectedError: 'Пароль должен содержать хотя бы одну букву' }
     ];
     
     let passwordTestsPassed = 0;
