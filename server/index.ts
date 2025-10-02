@@ -105,7 +105,7 @@ if (disableRateLimit) {
 if (!disableRateLimit) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 минут
-    max: 100, // максимум 100 запросов с одного IP за 15 минут
+    max: 1000, // максимум 1000 запросов с одного IP за 15 минут
     message: {
       error: 'Слишком много запросов с этого IP, попробуйте позже',
       retryAfter: '15 минут'
@@ -131,7 +131,7 @@ if (!disableRateLimit) {
 if (!disableRateLimit) {
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 минут
-    max: 5, // максимум 5 попыток входа за 15 минут
+    max: 20, // максимум 20 попыток входа за 15 минут
     message: {
       error: 'Слишком много попыток входа, попробуйте позже',
       retryAfter: '15 минут'
