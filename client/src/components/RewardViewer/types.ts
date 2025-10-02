@@ -13,6 +13,12 @@ export interface RewardViewerComponentProps {
   rewardName?: string;
   rewardPrice?: number;
   rewardDescription?: string;
+  // Пропсы для кнопки поделиться
+  isUserLoggedIn?: boolean;
+  onShareClick?: () => void;
+  onGetRewardClick?: () => void;
+  // Пропс для уведомления
+  showNotification?: boolean;
 }
 
 export type RewardSize = 'small' | 'medium' | 'large';

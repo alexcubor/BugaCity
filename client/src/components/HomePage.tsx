@@ -6,6 +6,7 @@ import NameInputModal from './NameInputModal';
 import AuthModal from './AuthModal';
 import ParallaxImage from './ParallaxImage';
 import RewardViewer from './RewardViewer/RewardViewer';
+import { tryNativeShare, copyToClipboard, ShareData } from '../utils/shareUtils';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -15,8 +16,10 @@ const HomePage: React.FC = () => {
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRewardModal, setShowRewardModal] = useState(false);
-  const [rewardModalData, setRewardModalData] = useState<{rewardId: string, userName: string} | null>(null);
+  const [rewardModalData, setRewardModalData] = useState<{rewardId: string, userName: string, userId?: string} | null>(null);
   const [rewardsData, setRewardsData] = useState<any[]>([]);
+  
+  const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
     // Проверяем, есть ли токен в localStorage
@@ -44,7 +47,8 @@ const HomePage: React.FC = () => {
             if (userData && userData.name) {
               setRewardModalData({
                 rewardId: rewardParam,
-                userName: userData.name
+                userName: userData.name,
+                userId: userParam
               });
               setShowRewardModal(true);
             }
@@ -53,7 +57,8 @@ const HomePage: React.FC = () => {
             // Если не удалось загрузить пользователя, показываем с ID
             setRewardModalData({
               rewardId: rewardParam,
-              userName: userParam
+              userName: userParam,
+              userId: userParam
             });
             setShowRewardModal(true);
           });
@@ -61,7 +66,8 @@ const HomePage: React.FC = () => {
         // Если это не ID, показываем как есть
         setRewardModalData({
           rewardId: rewardParam,
-          userName: userParam
+          userName: userParam,
+          userId: userParam
         });
         setShowRewardModal(true);
       }
@@ -105,14 +111,16 @@ const HomePage: React.FC = () => {
           if (userData && userData.name) {
             setRewardModalData({
               rewardId: rewardParam,
-              userName: userData.name
+              userName: userData.name,
+              userId: userParam
             });
             setShowRewardModal(true);
           } else {
             // Если имя не найдено, используем ID
             setRewardModalData({
               rewardId: rewardParam,
-              userName: userParam
+              userName: userParam,
+              userId: userParam
             });
             setShowRewardModal(true);
           }
@@ -120,7 +128,8 @@ const HomePage: React.FC = () => {
         .catch(() => {
           setRewardModalData({
             rewardId: rewardParam,
-            userName: userParam
+            userName: userParam,
+            userId: userParam
           });
           setShowRewardModal(true);
         });
@@ -128,7 +137,8 @@ const HomePage: React.FC = () => {
       // Если это не ID, показываем как есть
       setRewardModalData({
         rewardId: rewardParam,
-        userName: userParam
+        userName: userParam,
+        userId: userParam
       });
       setShowRewardModal(true);
     }
@@ -300,6 +310,35 @@ const HomePage: React.FC = () => {
     window.history.pushState({}, '', url);
   };
 
+  const handleShareClick = async () => {
+    if (rewardModalData?.userId && rewardModalData?.rewardId) {
+      const shareUrl = `${window.location.origin}/?user=${rewardModalData.userId}&reward=${rewardModalData.rewardId}`;
+      const shareData: ShareData = {
+        title: 'Посмотри мою награду!',
+        text: 'Посмотри на эту крутую награду!',
+        url: shareUrl
+      };
+
+      // Пытаемся использовать нативное меню на мобильных устройствах
+      const sharedSuccessfully = await tryNativeShare(shareData);
+      
+      if (!sharedSuccessfully) {
+        // Fallback: копируем в буфер обмена
+        const copied = await copyToClipboard(shareUrl);
+        if (copied) {
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 3000);
+        }
+      }
+    }
+  };
+
+  const handleGetRewardClick = () => {
+    // Закрываем модальное окно награды и открываем модальное окно регистрации
+    handleRewardModalClose();
+    setShowAuthModal(true);
+  };
+
 
 
   return (
@@ -427,6 +466,10 @@ const HomePage: React.FC = () => {
                      rewardName={getSelectedRewardData(rewardModalData.rewardId)?.name}
                      rewardPrice={getSelectedRewardData(rewardModalData.rewardId)?.price}
                      rewardDescription={getSelectedRewardData(rewardModalData.rewardId)?.description}
+                     isUserLoggedIn={isLoggedIn}
+                     onShareClick={handleShareClick}
+                     onGetRewardClick={handleGetRewardClick}
+                     showNotification={showNotification}
                      onLoad={() => {}}
                      onError={(error: string) => console.error(`Ошибка загрузки ${rewardModalData.rewardId}:`, error)}
                    />

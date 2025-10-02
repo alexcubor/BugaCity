@@ -34,7 +34,12 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   // Информация о награде
   rewardName,
   rewardPrice,
-  rewardDescription
+  rewardDescription,
+  // Пропсы для кнопки поделиться
+  isUserLoggedIn = false,
+  onShareClick,
+  onGetRewardClick,
+  showNotification = false
 }) => {
   
   const [isLoading, setIsLoading] = useState(true);
@@ -107,8 +112,13 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       const viewportHeight = window.innerHeight;
       const minDimension = Math.min(viewportWidth, viewportHeight);
       
-      // Canvas занимает 80% от минимального размера viewport, но не меньше 300px и не больше 600px
-      const canvasSize = Math.max(300, Math.min(600, Math.floor(minDimension * 0.8)));
+      // Уменьшаем размер canvas, чтобы оставить место для описания (120px + отступы)
+      const reservedSpace = 180; // Место для описания и отступов
+      const availableHeight = viewportHeight - reservedSpace;
+      const availableSize = Math.min(viewportWidth, availableHeight);
+      
+      // Canvas занимает 70% от доступного размера, но не меньше 250px и не больше 500px
+      const canvasSize = Math.max(250, Math.min(500, Math.floor(availableSize * 0.7)));
       
       // Увеличиваем разрешение canvas для четкости на высоких DPI экранах
       const pixelRatio = window.devicePixelRatio || 1;
@@ -530,10 +540,14 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
         // В модальном режиме делаем canvas квадратным на основе viewport
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const minDimension = Math.min(viewportWidth, viewportHeight);
         
-        // Canvas занимает 80% от минимального размера viewport, но не меньше 300px и не больше 600px
-        const canvasSize = Math.max(300, Math.min(600, Math.floor(minDimension * 0.8)));
+        // Уменьшаем размер canvas, чтобы оставить место для описания (120px + отступы)
+        const reservedSpace = 180; // Место для описания и отступов
+        const availableHeight = viewportHeight - reservedSpace;
+        const availableSize = Math.min(viewportWidth, availableHeight);
+        
+        // Canvas занимает 70% от доступного размера, но не меньше 250px и не больше 500px
+        const canvasSize = Math.max(250, Math.min(500, Math.floor(availableSize * 0.7)));
         
         // Увеличиваем разрешение canvas для четкости на высоких DPI экранах
         const pixelRatio = window.devicePixelRatio || 1;
@@ -632,6 +646,35 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
                 <div className="modal-reward-description-text">
                   {rewardDescription}
                 </div>
+              )}
+            </div>
+            
+            {/* Уведомление о копировании */}
+            {showNotification && (
+              <div className="copy-notification" onClick={(e) => e.stopPropagation()}>
+                Ссылка скопирована, поделись её с другом!
+              </div>
+            )}
+            
+            {/* Кнопка поделиться/получить под описанием */}
+            <div className="modal-share-button" onClick={(e) => e.stopPropagation()}>
+              {isUserLoggedIn ? (
+                <button 
+                  className="share-button"
+                  onClick={onShareClick}
+                  title="Поделиться наградой"
+                >
+                  <img src="/images/share.svg" alt="Поделиться" width="16" height="16" style={{ marginRight: '6px' }} />
+                  Поделиться
+                </button>
+              ) : (
+                <button 
+                  className="get-reward-button"
+                  onClick={onGetRewardClick}
+                  title="Получить такую же награду"
+                >
+                  Получить такую же!
+                </button>
               )}
             </div>
           </div>

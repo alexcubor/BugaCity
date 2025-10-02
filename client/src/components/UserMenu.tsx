@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './UserMenu.css';
 import './RewardViewer/RewardViewer.css';
+import { tryNativeShare, copyToClipboard, ShareData } from '../utils/shareUtils';
 
 // Ленивая загрузка RewardViewer (Babylon.js загрузится только когда открывается награда)
 const RewardViewer = lazy(() => import('./RewardViewer'));
@@ -31,6 +32,8 @@ function UserMenu({ onLogout }: UserMenuProps) {
   const [loading, setLoading] = useState(false);
   const [selectedReward, setSelectedReward] = useState<string | null>(null);
   const [rewardsData, setRewardsData] = useState<Reward[]>([]);
+  
+  const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
     // Загружаем данные пользователя сразу при монтировании компонента
@@ -192,6 +195,37 @@ function UserMenu({ onLogout }: UserMenuProps) {
     }
   };
 
+  const handleShareClick = async () => {
+    if (user?.id && selectedReward) {
+      const shareUrl = `${window.location.origin}/?user=${user.id}&reward=${selectedReward}`;
+      const shareData: ShareData = {
+        title: 'Посмотри мою награду!',
+        text: 'Посмотри на эту крутую награду!',
+        url: shareUrl
+      };
+
+      // Пытаемся использовать нативное меню на мобильных устройствах
+      const sharedSuccessfully = await tryNativeShare(shareData);
+      
+      if (!sharedSuccessfully) {
+        // Fallback: копируем в буфер обмена
+        const copied = await copyToClipboard(shareUrl);
+        if (copied) {
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 3000);
+        }
+      }
+    }
+  };
+
+  const handleGetRewardClick = () => {
+    // Закрываем модальное окно награды и открываем модальное окно регистрации
+    closeModal();
+    // Здесь нужно будет добавить логику открытия модального окна регистрации
+    // Пока что просто показываем alert
+    alert('Для получения награды необходимо зарегистрироваться!');
+  };
+
   return (
     <div className="user-menu">
       {/* Кнопка с аватаром */}
@@ -285,6 +319,10 @@ function UserMenu({ onLogout }: UserMenuProps) {
             rewardName={getSelectedRewardData()?.name}
             rewardPrice={getSelectedRewardData()?.price}
             rewardDescription={getSelectedRewardData()?.description}
+            isUserLoggedIn={true}
+            onShareClick={handleShareClick}
+            onGetRewardClick={handleGetRewardClick}
+            showNotification={showNotification}
             onLoad={() => {}}
             onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
           />
