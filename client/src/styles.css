@@ -28,6 +28,11 @@
   font-family: 'Golos', sans-serif;
 }
 
+/* Цвет для всех текстовых элементов */
+h1, h2, h3, h4, h5, h6, p, span, div, a, li, td, th {
+  color: var(--color-text-primary);
+}
+
 body {
   background-color: var(--color-background);
   margin: 0;
@@ -58,7 +63,6 @@ h1 {
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: var(--color-text-primary);
   text-align: center;
 }
 
@@ -66,7 +70,6 @@ h2 {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 12px;
-  color: var(--color-text-primary);
 }
 
 p {

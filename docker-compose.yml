@@ -21,10 +21,14 @@ services:
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - bugacity-network
+    ports:
+      - "${MONGODB_PORT:-}:27017"  # Проброс порта только в dev режиме
 
   # Application
   app:
     image: bugacity:latest
+    ports:
+      - "${APP_PORT:-}:3001"  # Проброс порта только в dev режиме
     deploy:
       replicas: 1
       restart_policy:

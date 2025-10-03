@@ -273,7 +273,8 @@ class AuthController {
         name: name || '',
         glukocoins: 0,
         rewards: ['pioneer'],
-        role: email === 'admin@buga.city' ? 'admin' : 'user' // Первый админ
+        role: 'user',
+        createdAt: new Date().toISOString()
       };
        
       const user = await db.collection('users').insertOne(userData);
@@ -460,7 +461,8 @@ class AuthController {
           vkId: vkId,
           avatar: userData.photo_200 || null,
           glukocoins: 0,
-          rewards: ['pioneer']
+          rewards: ['pioneer'],
+          createdAt: new Date().toISOString()
         });
 
         user = await db.collection('users').findOne({ _id: numericId });
@@ -545,7 +547,8 @@ class AuthController {
             email: userData.email,
             username: userData.email.split('@')[0],
             glukocoins: 0,
-            rewards: ['pioneer']
+            rewards: ['pioneer'],
+            createdAt: new Date().toISOString()
           });
 
           user = await db.collection('users').findOne({ _id: result.insertedId });
@@ -645,7 +648,8 @@ class AuthController {
             email: userData.email,
             username: userData.email.split('@')[0],
             glukocoins: 0,
-            rewards: ['pioneer']
+            rewards: ['pioneer'],
+            createdAt: new Date().toISOString()
           });
 
           user = await db.collection('users').findOne({ _id: numericId });

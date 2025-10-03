@@ -226,7 +226,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       
       // Только горизонтальное вращение вокруг оси Y (влево-вправо), блокируем вертикальное вращение
       camera.alpha -= deltaX * 0.01; // Горизонтальное вращение (влево-вправо)
-      // camera.beta += deltaY * 0.01;  // ЗАБЛОКИРОВАНО - вертикальное вращение
+      camera.beta -= deltaY * 0.01;  // Вертикальное вращение
       
       
       lastPointerX = evt.clientX;
@@ -489,7 +489,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
             camera.parent = cameraParent;
             
             // Автоматическое вращение родительского объекта
-            const rotationSpeed = 0.0002; // Медленное вращение
+            const rotationSpeed = 0.000; // Медленное вращение
             let rotationAngle = 0;
             
             const animateParentRotation = () => {

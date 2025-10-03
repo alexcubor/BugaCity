@@ -1,6 +1,8 @@
 import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import HomePage from './components/HomePage';
+import AdminGuard from './components/AdminPanel/AdminGuard';
+import NotFound from './components/NotFound';
 import './styles.css';
 
 // Ленивая загрузка SceneEditor (Babylon.js загрузится только когда нужен)
@@ -12,6 +14,10 @@ function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const userParam = urlParams.get('user');
   const rewardParam = urlParams.get('reward');
+  
+  if (path === '/admin') {
+    return <AdminGuard />;
+  }
   
   if (path === '/admin/scene') {
     return (

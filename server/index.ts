@@ -10,6 +10,8 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import rewardRoutes from './routes/rewards';
 import adminRoutes from './routes/admin';
+import { authenticateToken } from './middleware/auth';
+import { requireAdmin } from './middleware/roles';
 
 // Загружаем переменные окружения из .env.dev файла
 dotenv.config({ path: '.env.dev' });
@@ -259,6 +261,11 @@ app.get('/api/hdri-files', (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Ошибка при сканировании файлов' });
   }
+});
+
+// Админ страница - всегда возвращаем HTML, но проверка авторизации в клиенте
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'client/public/index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
