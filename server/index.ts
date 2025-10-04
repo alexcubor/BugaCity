@@ -244,6 +244,11 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'client/public/index.html'));
 });
 
+// Страница авторизации
+app.get('/auth', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'client/public/index.html'));
+});
+
 // Админ-панель
 app.get('/admin/scene', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'client/public/index.html'));

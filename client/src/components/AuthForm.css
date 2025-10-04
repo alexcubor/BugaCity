@@ -1,0 +1,87 @@
+/* Используем стили из AuthModal.css, но адаптируем для отображения по центру страницы */
+.auth-form-container {
+  position: absolute;
+  top: 50vh;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 250px;
+}
+
+/* Убираем кнопку закрытия, так как это не модальное окно */
+.auth-form-close {
+  display: none;
+}
+
+.form-fields-container {
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  height: 70px;
+  border-radius: 0px;
+}
+
+.form-field {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transition: transform 0.3s ease-in-out;
+  min-width: 100%;
+  border-radius: 0px;
+}
+
+.form-field.slide-out {
+  transform: translateX(-100%);
+}
+
+.form-field.slide-in {
+  transform: translateX(0);
+  animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.message {
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+  color: #fcfcfcba;
+}
+
+.message.success {
+  background-color: rgba(76, 175, 80, 0.7);
+}
+
+.message.error {
+  background-color: rgba(244, 67, 54, 0.7);
+}
+
+/* Специальные стили для кнопок навигации */
+.auth-form button[style*="width: 40px"] {
+  width: 40px !important;
+  min-width: 40px !important;
+  flex-shrink: 0 !important;
+  padding: 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-form button[style*="flex: 1"] {
+  flex: 1 !important;
+}
+
+/* Стили для контейнера с кнопками */
+.auth-form div[style*="flexDirection: row"] {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+

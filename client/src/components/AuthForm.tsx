@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SocialButtons from './SocialButtons';
-import './AuthModal.css';
+import './AuthForm.css';
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: (token: string, userId: string) => void;
+interface AuthFormProps {
+  onAuthSuccess: (token: string, userId: string) => void;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,17 +34,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
       }
     };
 
-    // Проверяем автозаполнение при открытии модального окна
-    if (isOpen) {
-      const timer = setTimeout(checkAutofill, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, email]);
+    // Проверяем автозаполнение при загрузке компонента
+    const timer = setTimeout(checkAutofill, 100);
+    return () => clearTimeout(timer);
+  }, [email]);
 
   const handleEmailInput = (e: React.FormEvent<HTMLInputElement>) => {
     setEmail(e.currentTarget.value);
   };
-
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -299,7 +294,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    
     // Валидация полей
     const isEmailValid = validateEmail(email);
     const isPasswordValid = !isLogin ? validatePassword(password) : true;
@@ -324,7 +318,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     const url = isLogin ? '/api/auth/login' : '/api/auth/register';
     const data = isLogin ? { email, password } : { email, password, verificationCode };
     
-    
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -341,8 +334,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
         if (!isLogin) {
           window.location.href = '/?reward=pioneer';
         } else {
-          onSuccess(result.token, result.userId);
-          onClose();
+          onAuthSuccess(result.token, result.userId);
         }
       } else {
         setMessage(result.error);
@@ -408,14 +400,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     setEmailError('');
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="auth-modal-overlay" onClick={onClose}>
-      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="auth-modal-close" onClick={onClose}>×</button>
-        
-        <h1>{isLogin ? 'Вход' : 'Регистрация'}</h1>
+    <div className="auth-form-container">
+      <div className="container">
+        <h1 style={{textAlign: 'center'}}>{isLogin ? 'Вход' : 'Регистрация'}</h1>
         
         <form onSubmit={handleSubmit}>
           <div className="form-fields-container">
@@ -574,13 +562,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           </div>
           
           {message && (
-            <div className={`message ${messageType}`} style={{
-              padding: '10px',
-              margin: '10px 0',
-              borderRadius: '5px',
-              textAlign: 'center',
-              color: 'var(--color-text-secondary)'
-            }}>
+            <div className={`message ${messageType}`}>
               {message}
             </div>
           )}
@@ -671,29 +653,31 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
               </div>
             )
           ) : (
-            <button type="submit">
+            <button type="submit" >
               Зарегистрироваться
             </button>
           )}
         </form>
         
-        <button 
-          onClick={() => {
-            setIsLogin(!isLogin);
-            resetForm();
-          }}
-        >
-          {isLogin ? 'Перейти к регистрации' : 'Перейти к входу'}
-        </button>
-        
-        <SocialButtons
-          isLogin={isLogin}
-          onSuccess={handleSocialSuccess}
-          onError={handleSocialError}
-        />
+        <div>
+            <button 
+            onClick={() => {
+                setIsLogin(!isLogin);
+                resetForm();
+            }}
+            >
+            {isLogin ? 'Регистрация' : 'Вход'}
+            </button>
+            
+            <SocialButtons
+            isLogin={isLogin}
+            onSuccess={handleSocialSuccess}
+            onError={handleSocialError}
+            />
+        </div>
       </div>
     </div>
   );
 };
 
-export default AuthModal;
+export default AuthForm;

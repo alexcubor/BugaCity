@@ -8,6 +8,7 @@ const RewardViewer = lazy(() => import('./RewardViewer'));
 
 interface UserMenuProps {
   onLogout: () => void;
+  onRewardClick?: (reward: string) => void;
 }
 
 interface User {
@@ -26,7 +27,7 @@ interface Reward {
   price: number;
 }
 
-function UserMenu({ onLogout }: UserMenuProps) {
+function UserMenu({ onLogout, onRewardClick }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -165,23 +166,35 @@ function UserMenu({ onLogout }: UserMenuProps) {
   };
 
   const handleRewardClick = (reward: string) => {
-    setSelectedReward(reward);
+    console.log('🎯 UserMenu: handleRewardClick вызван', { reward });
+    
+    if (onRewardClick) {
+      onRewardClick(reward);
+    } else {
+      // Fallback: локальная логика
+      setSelectedReward(reward);
+    }
+    
     // Обновляем URL с ID пользователя для возможности поделиться ссылкой
     const url = new URL(window.location.href);
     if (user?.id) {
       url.searchParams.set('user', user.id);
       url.searchParams.set('reward', reward);
       window.history.pushState({}, '', url);
+      console.log('🎯 UserMenu: URL обновлен с параметрами награды');
     } else {
+      console.log('🎯 UserMenu: ID пользователя не найден');
     }
   };
 
   const closeModal = () => {
+    console.log('🎯 UserMenu: closeModal вызван');
     setSelectedReward(null);
     // Убираем параметр из URL
     const url = new URL(window.location.href);
     url.searchParams.delete('reward');
     window.history.pushState({}, '', url);
+    console.log('🎯 UserMenu: Модальное окно награды закрыто');
   };
 
   const getSelectedRewardData = (): Reward | null => {
@@ -218,18 +231,11 @@ function UserMenu({ onLogout }: UserMenuProps) {
     }
   };
 
-  const handleGetRewardClick = () => {
-    // Закрываем модальное окно награды и открываем модальное окно регистрации
-    closeModal();
-    // Здесь нужно будет добавить логику открытия модального окна регистрации
-    // Пока что просто показываем alert
-    alert('Для получения награды необходимо зарегистрироваться!');
-  };
 
   return (
     <div className="user-menu">
       {/* Кнопка с аватаром */}
-      <button onClick={toggleMenu}>
+      <button className="user-menu-open" onClick={toggleMenu}>
         <span>{user?.name || 'Пользователь'}</span>
         {user?.id ? (
           <div style={{ position: 'relative' }}>
@@ -263,7 +269,7 @@ function UserMenu({ onLogout }: UserMenuProps) {
 
       {/* Выпадающее меню */}
       {isOpen && (
-        <div className="widget">
+        <div className="container container-user-menu">
           {/* Блок с наградами */}
           <div>
             <div className="rewards-container">
@@ -298,36 +304,7 @@ function UserMenu({ onLogout }: UserMenuProps) {
         </div>
       )}
 
-      {/* Модальное окно с 3D Viewer */}
-      {selectedReward && user?.name && (
-        <Suspense fallback={<div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '400px',
-          fontSize: '16px',
-          color: '#666'
-        }}>Загрузка 3D модели...</div>}>
-          <RewardViewer
-            rewardId={selectedReward}
-            size="large"
-            autoRotate={true}
-            isModal={true}
-            onClose={closeModal}
-            modalTitle={`Награда: ${selectedReward}`}
-            userName={user.name}
-            rewardName={getSelectedRewardData()?.name}
-            rewardPrice={getSelectedRewardData()?.price}
-            rewardDescription={getSelectedRewardData()?.description}
-            isUserLoggedIn={true}
-            onShareClick={handleShareClick}
-            onGetRewardClick={handleGetRewardClick}
-            showNotification={showNotification}
-            onLoad={() => {}}
-            onError={(error: string) => console.error(`Ошибка загрузки ${selectedReward}:`, error)}
-          />
-        </Suspense>
-      )}
+      {/* Модальное окно с 3D Viewer теперь рендерится в HomePage */}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 {
   "watch": [
-    "server/**/*",
-    "client/**/*"
+    "server/**/*"
   ],
   "ext": "ts,tsx,js,jsx,css,json",
   "ignore": [

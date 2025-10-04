@@ -1,8 +1,10 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import HomePage from './components/HomePage';
+import AuthPage from './components/AuthPage';
 import AdminGuard from './components/AdminPanel/AdminGuard';
 import NotFound from './components/NotFound';
+import UserMenu from './components/UserMenu';
 import './styles.css';
 
 // Ленивая загрузка SceneEditor (Babylon.js загрузится только когда нужен)
@@ -32,6 +34,10 @@ function App() {
         <SceneEditor />
       </Suspense>
     );
+  }
+  
+  if (path === '/auth') {
+    return <AuthPage />;
   }
   
   // Если есть параметр user, показываем HomePage с модальным окном

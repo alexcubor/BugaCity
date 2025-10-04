@@ -1,0 +1,208 @@
+/* Стили для header на странице авторизации */
+.header {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  min-width: 100vw !important;
+  z-index: 1000 !important;
+  padding: 20px !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Стили для логотипа */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo {
+  height: 90px;
+  width: auto;
+}
+
+@media (orientation: portrait) {
+  .logo {
+    height: 60px;
+  }
+}
+
+/* Стили для страницы авторизации */
+.auth-page-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Переопределяем стили модального окна для страницы авторизации */
+.auth-page-modal .auth-modal-overlay {
+  background-color: transparent;
+  position: static;
+  width: auto;
+  height: auto;
+}
+
+.auth-page-modal .auth-modal {
+  background: var(--color-surface-dark);
+  border-radius: 15px;
+  padding: 40px;
+  max-width: 450px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Скрываем кнопку закрытия на странице авторизации */
+.auth-page-modal .auth-modal-close {
+  display: none;
+}
+
+/* Улучшаем внешний вид для страницы авторизации */
+.auth-page-modal .auth-modal h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.auth-page-modal .auth-modal .form-group {
+  margin-bottom: 20px;
+}
+
+.auth-page-modal .auth-modal .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.auth-page-modal .auth-modal .form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.auth-page-modal .auth-modal .form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.auth-page-modal .auth-modal .form-group input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+/* Стили для кнопок */
+.auth-page-modal .auth-modal .auth-button {
+  width: 100%;
+  padding: 14px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.auth-page-modal .auth-modal .auth-button:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.auth-page-modal .auth-modal .auth-button:active {
+  transform: translateY(0);
+}
+
+/* Стили для переключения между входом и регистрацией */
+.auth-page-modal .auth-modal .auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--color-text-secondary);
+}
+
+.auth-page-modal .auth-modal .auth-toggle button {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 14px;
+}
+
+.auth-page-modal .auth-modal .auth-toggle button:hover {
+  color: var(--color-primary-dark);
+}
+
+/* Стили для социальных кнопок */
+.auth-page-modal .auth-modal .social-buttons {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .auth-page-modal .auth-modal {
+    padding: 30px 20px;
+    max-width: 90%;
+    margin: 20px;
+  }
+  
+  .auth-page-modal .auth-modal h2 {
+    font-size: 20px;
+  }
+}
+
+/* Анимация появления */
+.auth-page-modal {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.auth-page-modal .auth-modal {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

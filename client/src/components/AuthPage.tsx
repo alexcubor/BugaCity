@@ -1,16 +1,20 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import UserMenu from './UserMenu';
+import SupportButton from './SupportButton';
+import Footer from './Footer';
 import NameInputModal from './NameInputModal';
+import AuthForm from './AuthForm';
+import ParallaxImage from './ParallaxImage';
 import RewardViewer from './RewardViewer/RewardViewer';
-import MapboxMap from './MapboxMap';
 import { tryNativeShare, copyToClipboard, ShareData } from '../utils/shareUtils';
+import './AuthPage.css';
 
-const HomePage: React.FC = () => {
+const AuthPage: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [showNameModal, setShowNameModal] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
-  // Убираем состояние модального окна авторизации - теперь отдельная страница
+  // Убираем showAuthModal - форма авторизации всегда видна на этой странице
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [rewardModalData, setRewardModalData] = useState<{rewardId: string, userName: string, userId?: string} | null>(null);
   const [rewardsData, setRewardsData] = useState<any[]>([]);
@@ -22,9 +26,9 @@ const HomePage: React.FC = () => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
     
-    // Если пользователь не авторизован, сразу перенаправляем на страницу авторизации
-    if (!token) {
-      window.location.href = '/auth';
+    // Если пользователь уже авторизован, перенаправляем на главную страницу
+    if (token) {
+      window.location.href = '/';
       return;
     }
     
@@ -40,14 +44,7 @@ const HomePage: React.FC = () => {
     const userParam = urlParams.get('user');
     const rewardParam = urlParams.get('reward');
     
-    console.log('🎯 HomePage: Проверяем URL параметры', {
-      userParam,
-      rewardParam,
-      search: window.location.search
-    });
-    
     if (userParam && rewardParam) {
-      console.log('🎯 HomePage: Найдены параметры user и reward, открываем модальное окно');
       // Если userParam выглядит как ID, загружаем данные пользователя
       if (userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) {
         fetch(`/api/users/${userParam}`)
@@ -73,7 +70,6 @@ const HomePage: React.FC = () => {
           });
       } else {
         // Если это не ID, показываем как есть
-        console.log('🎯 HomePage: userParam не является ID, показываем как есть');
         setRewardModalData({
           rewardId: rewardParam,
           userName: userParam,
@@ -81,8 +77,6 @@ const HomePage: React.FC = () => {
         });
         setShowRewardModal(true);
       }
-    } else {
-      console.log('🎯 HomePage: Параметры user и reward не найдены в URL');
     }
 
   }, []);
@@ -159,7 +153,6 @@ const HomePage: React.FC = () => {
   // Отслеживаем изменения URL
   useEffect(() => {
     const checkUrl = () => {
-      console.log('🎯 HomePage: checkUrl вызван');
       const urlParams = new URLSearchParams(window.location.search);
       const userParam = urlParams.get('user');
       const rewardParam = urlParams.get('reward');
@@ -189,10 +182,8 @@ const HomePage: React.FC = () => {
       }
       
       if (userParam && rewardParam) {
-        console.log('🎯 HomePage: checkUrl - найдены параметры, вызываем openRewardModal');
         openRewardModal(userParam, rewardParam);
       } else if (showRewardModal) {
-        console.log('🎯 HomePage: checkUrl - закрываем модальное окно');
         setShowRewardModal(false);
         setRewardModalData(null);
       }
@@ -203,7 +194,7 @@ const HomePage: React.FC = () => {
     window.addEventListener('popstate', checkUrl);
     
     return () => window.removeEventListener('popstate', checkUrl);
-  }, []);
+  }, [showRewardModal]);
 
   const loadUserData = async () => {
     if (isLoadingUser) {
@@ -310,10 +301,16 @@ const HomePage: React.FC = () => {
     }
   };
 
-  // Функция handleAuthSuccess убрана - авторизация теперь на отдельной странице
+  const handleAuthSuccess = (token: string, userId: string) => {
+    setIsLoggedIn(true);
+    loadUserData();
+    // Перенаправляем на главную страницу после успешной авторизации
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000);
+  };
 
   const handleRewardModalClose = () => {
-    console.log('🎯 HomePage: handleRewardModalClose вызван');
     setShowRewardModal(false);
     setRewardModalData(null);
     // Убираем параметры из URL
@@ -321,7 +318,6 @@ const HomePage: React.FC = () => {
     url.searchParams.delete('user');
     url.searchParams.delete('reward');
     window.history.pushState({}, '', url);
-    console.log('🎯 HomePage: Модальное окно награды закрыто');
   };
 
   const handleShareClick = async () => {
@@ -348,50 +344,70 @@ const HomePage: React.FC = () => {
   };
 
   const handleGetRewardClick = () => {
-    console.log('🎯 HomePage: handleGetRewardClick вызван', {
-      user,
-      isLoggedIn
-    });
-    
-    // Открываем модальное окно награды
-    setRewardModalData({
-      rewardId: 'pioneer',
-      userName: user?.name || 'Пользователь',
-      userId: user?.id
-    });
-    setShowRewardModal(true);
-    
-    console.log('🎯 HomePage: Модальное окно награды открыто');
+    // Закрываем модальное окно награды - форма авторизации уже видна на странице
+    handleRewardModalClose();
   };
-
-  const handleRewardClick = (reward: string) => {
-    console.log('🎯 HomePage: handleRewardClick вызван', { reward, user });
-    
-    // Открываем модальное окно награды
-    setRewardModalData({
-      rewardId: reward,
-      userName: user?.name || 'Пользователь',
-      userId: user?.id
-    });
-    setShowRewardModal(true);
-    
-    console.log('🎯 HomePage: Модальное окно награды открыто из UserMenu');
-  };
-
-
 
   return (
-    <>
-      {/* UserMenu без header */}
-      {isLoggedIn && <UserMenu onLogout={handleLogout} onRewardClick={handleRewardClick} />}
+    <div>
+      <ParallaxImage
+        mainImage="/images/glukograd_bg.jpg"
+        depthMap="/images/glukograd_bg_depth.jpg"
+        foregroundImage="/images/glukograd_fg.png"
+        foregroundDepthMap="/images/glukograd_fg_depth.jpg"
+        intensity={3.0}
+        minOffset={-100}
+        maxOffset={200}
+        sensitivity={1.2}
+      >
+        {/* Форма авторизации по центру изображения */}
+        <AuthForm onAuthSuccess={handleAuthSuccess} />
+      </ParallaxImage>
+      
+      <div>
+        <header className="header">
+          <div className="logo-container">
+            <img 
+              src="/images/glukograd_logo.png" 
+              alt="Глюкоград логотип"
+              className="logo"
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {/* Кнопка "Назад" убрана - авторизованные пользователи перенаправляются автоматически */}
+            {isLoggedIn && <UserMenu onLogout={handleLogout} />}
+          </div>
+        </header>
 
-      {/* Карта Mapbox на весь экран */}
-      <MapboxMap 
-        style={{ 
-          width: '100vw', 
-          height: '100vh' 
-        }}
-      />
+        <section style={{
+          margin: '0 20%'
+        }}>
+          <div>
+            <h1>Что это?</h1>
+            <div>
+              <p>
+                <strong>Глюкоград</strong> — это цифровое отражение твоего города. 
+                Здесь двор становится игровым уровнем, а уличные глюки новыми ориентирами 
+                для поиска редких артефактов. В Глюкограде можно найти постоянные объекты 
+                творчества, которые оставляют друзья, а за свою активность получить статус 
+                архитектора, мэра, а так же заработать награды, которые стоят целые глюкоины!
+              </p>
+              <p>
+                Мир Глюкограда только зарождается, и ты можешь ускорить его развитие, 
+                питая его поддержкой и бустами. Стань пионером в его исследовании, 
+                следи за новостями и знаками.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div>
+            <SupportButton />
+          </div>
+        </section>
+      </div>
+      <Footer />
       
       {/* Модальное окно для ввода имени */}
       <NameInputModal
@@ -400,23 +416,17 @@ const HomePage: React.FC = () => {
         onClose={() => setShowNameModal(false)}
       />
 
-      {/* Модальное окно авторизации убрано - теперь отдельная страница /auth */}
 
                {/* Модальное окно для награды из URL */}
                {showRewardModal && rewardModalData && (
-                 <>
-                   {console.log('🎯 HomePage: Рендерим модальное окно награды', {
-                     showRewardModal,
-                     rewardModalData
-                   })}
-                   <Suspense fallback={<div style={{ 
-                     display: 'flex', 
-                     justifyContent: 'center', 
-                     alignItems: 'center', 
-                     height: '400px',
-                     fontSize: '16px',
-                     color: '#666'
-                   }}>Загрузка 3D модели...</div>}>
+                 <Suspense fallback={<div style={{ 
+                   display: 'flex', 
+                   justifyContent: 'center', 
+                   alignItems: 'center', 
+                   height: '400px',
+                   fontSize: '16px',
+                   color: '#666'
+                 }}>Загрузка 3D модели...</div>}>
                    <RewardViewer
                      rewardId={rewardModalData.rewardId}
                      size="large"
@@ -436,10 +446,9 @@ const HomePage: React.FC = () => {
                      onError={(error: string) => console.error(`Ошибка загрузки ${rewardModalData.rewardId}:`, error)}
                    />
                  </Suspense>
-                 </>
                )}
-    </>
+    </div>
   );
 };
 
-export default HomePage;
+export default AuthPage;

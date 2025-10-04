@@ -4,7 +4,7 @@
   "description": "Bugacity - Augmented Reality Social Network",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "npm run dev:server",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "webpack serve --mode development",
     "dev:server": "nodemon",
     "build": "npm run build:client && npm run build:server",
@@ -27,6 +27,7 @@
     "test:all:prod": "TEST_API_URL=https://gluko.city node tests/test-all.js"
   },
   "dependencies": {
+    "@types/mapbox-gl": "^3.4.1",
     "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -35,6 +36,7 @@
     "express-rate-limit": "^8.1.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mapbox-gl": "^3.15.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.0.3",
     "nodemailer": "^6.9.7"
