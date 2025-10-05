@@ -4,6 +4,25 @@
   height: 100%;
 }
 
+.mapbox-map-container div {
+  border-radius: 0px !important;
+}
+
+/* Скрываем атрибуцию Mapbox */
+.mapboxgl-ctrl-attrib {
+  display: none !important;
+}
+
+/* Скрываем логотип Mapbox */
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+/* Скрываем контейнер с логотипом */
+.mapboxgl-ctrl-bottom-left {
+  display: none !important;
+}
+
 .mapbox-map {
   width: 100%;
   height: 100%;
@@ -33,4 +52,25 @@
   padding: 20px;
 }
 
+/* Стили для маркера крана */
+.crane-marker-container {
+  transition: all 0.2s ease;
+}
+
+.crane-marker-container:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.crane-icon {
+  transition: transform 0.2s ease;
+}
+
+.crane-marker-container:hover .crane-icon {
+  transform: rotate(5deg);
+}
+
+.crane-text {
+  user-select: none;
+}
 

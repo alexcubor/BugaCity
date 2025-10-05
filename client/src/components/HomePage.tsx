@@ -371,6 +371,26 @@ const HomePage: React.FC = () => {
 
   return (
     <>
+      {/* Логотип в верхнем левом углу */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        zIndex: 10,
+        width: '64px',
+        height: '64px'
+      }}>
+        <img 
+          src="/favicon.ico" 
+          alt="Glukograd Logo" 
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain'
+          }}
+        />
+      </div>
+
       {/* UserMenu без header */}
       {isLoggedIn && <UserMenu onLogout={handleLogout} onRewardClick={handleRewardClick} onUserNameChange={handleUserNameChange} />}
 

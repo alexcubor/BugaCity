@@ -82,7 +82,6 @@
 
 /* Модальное окно поддержки */
 .modal {
-  display: none;
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -92,10 +91,7 @@
   background: rgba(0, 0, 0, 0.7);
   justify-content: center;
   align-items: center;
-}
-
-.modal.show {
-  display: flex;
+  border-radius: 0px;
 }
 
 .modal-content {

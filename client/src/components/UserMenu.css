@@ -105,3 +105,10 @@
   clip-path: url(#userMask);
 }
 
+/* Стили для кнопки поддержки */
+.support-button {
+  background-color: #ff9100 !important;
+  color: wheat;
+}
+
+

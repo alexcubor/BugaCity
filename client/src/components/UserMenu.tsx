@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './UserMenu.css';
 import './RewardViewer/RewardViewer.css';
+import './SupportButton.css';
 import { tryNativeShare, copyToClipboard, ShareData } from '../utils/shareUtils';
 
 // Ленивая загрузка RewardViewer (Babylon.js загрузится только когда открывается награда)
@@ -38,6 +39,7 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
   const [showNotification, setShowNotification] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   useEffect(() => {
     // Загружаем данные пользователя сразу при монтировании компонента
@@ -212,6 +214,15 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
     setIsOpen(false);
   };
 
+  const handleSupport = () => {
+    setIsSupportModalOpen(true);
+  };
+
+  const closeSupportModal = () => {
+    setIsSupportModalOpen(false);
+  };
+
+
   const handleRewardClick = (reward: string) => {
     
     if (onRewardClick) {
@@ -366,13 +377,43 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
           </div>
 
           {/* Меню действий */}
+          <div>
+            <button 
+              onClick={handleSupport}
+              style={{ backgroundColor: '#ff9100' }}
+              className="support-button"
+            >
+              Поддержать
+            </button>
             <button onClick={handleLogout}>
               Выйти
             </button>
+          </div>
         </div>
       )}
 
       {/* Модальное окно с 3D Viewer теперь рендерится в HomePage */}
+      
+      {/* Модальное окно поддержки */}
+      {isSupportModalOpen && (
+        <div id="support-modal" className="modal show">
+          <div className="modal-content">
+            <span className="modal-label" onClick={closeSupportModal}>&times;</span>
+            <div className="modal-hint">
+              В сообщении доната укажи свою почту!<br />
+              <span className="modal-hint-small">Это поможет в будущем начислить награду</span>
+            </div>
+            <a 
+              href="https://boosty.to/glukograd" 
+              target="_blank" 
+              rel="noopener" 
+              className="modal-boosty-btn"
+            >
+              Поддержать на Boosty
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
