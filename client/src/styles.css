@@ -32,7 +32,7 @@ body {
 }
 
 button {
-  background: var(--surface);
+  background: rgb(26 26 26 / 60%);
   border: 1px solid var(--border);
   color: var(--text);
   padding: 12px 20px;
@@ -80,7 +80,6 @@ div, form{
   gap: 10px;
   height: auto;
   min-height: fit-content;
-  border-radius: 15px;
   }
 
   @keyframes modalFadeIn {
@@ -104,4 +103,5 @@ div, form{
   padding: 30px;
   max-width: 400px;
   gap: 40px;
+  border-radius: 15px;
 }

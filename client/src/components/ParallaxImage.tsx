@@ -699,45 +699,6 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
         className={`parallax-canvas ${isLoaded ? 'loaded' : ''}`}
       />
 
-      {/* Кнопка активации 3D режима для мобильных */}
-      {isMobile && gyroPermission === 'unknown' && !buttonClicked && (
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(33.33% + 80px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 15
-        }}>
-          <button
-            onClick={() => {
-              setButtonClicked(true);
-              requestGyroPermission();
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderRadius: '12px',
-              color: 'white',
-              padding: '12px 16px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.color = 'white';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'white';
-            }}
-          >
-            Включить 3D
-          </button>
-        </div>
-      )}
-
       {/* Контент поверх изображения */}
       {children && (
         <div className="parallax-content">
