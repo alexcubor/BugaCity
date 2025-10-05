@@ -151,34 +151,47 @@ function showHelp() {
 
 // Функция для запуска множественных тестов
 async function runMultipleTests(testNames, environment) {
-  const { chromium } = require('playwright');
   const config = require('./config');
   const path = require('path');
   
-  // Создаем браузер один раз для всех тестов
-  const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
-  const browserOptions = {
-    headless: config.browser.headless,
-    slowMo: config.browser.slowMo,
-    timeout: config.browser.timeout
-  };
+  // Проверяем, нужен ли браузер для тестов
+  const needsBrowser = testNames.some(testName => 
+    testName === 'registration-frontend' || 
+    testName === 'reward' || 
+    testName === 'browser'
+  );
+  
+  let context = null;
+  let page = null;
+  
+  if (needsBrowser) {
+    const { chromium } = require('playwright');
+    
+    // Создаем браузер только для frontend тестов
+    const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
+    const browserOptions = {
+      headless: config.browser.headless,
+      slowMo: config.browser.slowMo,
+      timeout: config.browser.timeout
+    };
 
-  if (config.browser.disableCache) {
-    browserOptions.args = [
-      '--disable-application-cache',
-      '--disable-offline-load-stale-cache',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=TranslateUI',
-      '--disable-ipc-flooding-protection',
-      '--aggressive-cache-discard'
-    ];
+    if (config.browser.disableCache) {
+      browserOptions.args = [
+        '--disable-application-cache',
+        '--disable-offline-load-stale-cache',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--aggressive-cache-discard'
+      ];
+    }
+
+    context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
+    page = context.pages()[0] || await context.newPage();
   }
-
-  const context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
-  const page = context.pages()[0] || await context.newPage();
   
   const results = [];
   
@@ -200,7 +213,7 @@ async function runMultipleTests(testNames, environment) {
           result = await runRewardTest(page, context);
         } else if (testName === 'registration-backend') {
           const { runBackendTest } = require('./test-registration-backend');
-          result = await runBackendTest();
+          result = await runBackendTest(environment);
         } else {
           // Для других тестов используем старый способ
           const testFile = availableTests[testName];
@@ -208,7 +221,7 @@ async function runMultipleTests(testNames, environment) {
           
           let spawnArgs = [testPath];
           if (testName === 'browser') {
-            spawnArgs.push(config.baseUrl);
+            spawnArgs.push(config.urls[environment] || config.baseUrl);
           } else {
             spawnArgs.push(environment);
           }
@@ -244,9 +257,11 @@ async function runMultipleTests(testNames, environment) {
       }
     }
   } finally {
-    // Закрываем браузер в конце всех тестов
-    await context.close();
-    console.log('✅ Браузер закрыт');
+    // Закрываем браузер только если он был создан
+    if (context) {
+      await context.close();
+      console.log('✅ Браузер закрыт');
+    }
   }
   
   // Выводим итоговые результаты

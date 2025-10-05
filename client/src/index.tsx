@@ -40,8 +40,8 @@ function App() {
     return <AuthPage />;
   }
   
-  // Если есть параметр user, показываем HomePage с модальным окном
-  if (userParam) {
+  // Если есть параметры user или reward, показываем HomePage с модальным окном
+  if (userParam || rewardParam) {
     return <HomePage />;
   }
   

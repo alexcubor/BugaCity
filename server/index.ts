@@ -50,6 +50,7 @@ const allowedOrigins = [
   'https://bugacity-docker.ru.tuna.am', 
   'https://gluko.city',
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:8080'
 ];
 
@@ -94,7 +95,8 @@ app.use(cors({
 }));
 
 // Шаг 3: Rate Limiting с исключениями для OAuth и dev окружения
-const disableRateLimit = process.env.DISABLE_RATE_LIMIT === 'true';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const disableRateLimit = isDevelopment;
 
 // Логируем состояние rate limiting
 if (disableRateLimit) {
@@ -184,10 +186,11 @@ if (!mongoUri) {
     mongodbPassword = process.env.MONGODB_PASSWORD;
   }
 
-  // Если запущено в Swarm с секретом, используем DNS-имя сервиса 'mongodb'
-  const secretPath = process.env.MONGODB_PASSWORD_FILE || '';
-  const useSwarmDns = secretPath && fs.existsSync(secretPath);
-  const mongoHost = useSwarmDns ? 'mongodb' : 'localhost';
+  // Определяем режим работы приложения
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  // Используем переменную окружения MONGODB_HOST или IP-адрес по умолчанию
+  const mongoHost = process.env.MONGODB_HOST || (isDevelopment ? '172.18.0.4' : 'bugacity_mongodb');
+  console.log(`[DB] NODE_ENV: ${process.env.NODE_ENV}, isDevelopment: ${isDevelopment}, mongoHost: ${mongoHost}`);
   mongoUri = `mongodb://bugacity_user:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
 }
 

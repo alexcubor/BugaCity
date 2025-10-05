@@ -2,18 +2,9 @@ const axios = require('axios');
 
 // Конфигурация
 const config = require('./config');
-const API_BASE_URL = config.baseUrl;
 const TEST_EMAIL = config.testAccount.email;
 const TEST_PASSWORD = config.testAccount.password;
 const TEST_VERIFICATION_CODE = '111111';
-
-console.log('🧪 ТЕСТ BACKEND РЕГИСТРАЦИИ');
-console.log('============================');
-console.log(`🌐 API URL: ${API_BASE_URL}`);
-console.log(`📧 Email: ${TEST_EMAIL}`);
-console.log(`🔑 Password: ${TEST_PASSWORD}`);
-console.log(`🔢 Verification Code: ${TEST_VERIFICATION_CODE}`);
-console.log('');
 
 // Функция для удаления пользователя
 async function deleteUser(email) {
@@ -162,9 +153,22 @@ async function testPasswordValidation(email, password, expectedError) {
   }
 }
 
-async function runBackendTest() {
+async function runBackendTest(environment = 'local') {
   console.log('🚀 НАЧИНАЕМ ТЕСТИРОВАНИЕ BACKEND');
   console.log('==================================');
+  
+  // Обновляем конфигурацию с правильным окружением
+  const config = require('./config');
+  const API_BASE_URL = config.urls[environment] || config.baseUrl;
+  
+  // Обновляем глобальную переменную для функций
+  global.API_BASE_URL = API_BASE_URL;
+  
+  console.log(`🌐 API URL: ${API_BASE_URL}`);
+  console.log(`📧 Email: ${TEST_EMAIL}`);
+  console.log(`🔑 Password: ${TEST_PASSWORD}`);
+  console.log(`🔢 Verification Code: ${TEST_VERIFICATION_CODE}`);
+  console.log('');
   
   let success = true;
   

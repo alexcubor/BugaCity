@@ -724,7 +724,9 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
               ) : (
                 <button 
                   className="get-reward-button"
-                  onClick={onGetRewardClick}
+                  onClick={() => {
+                    onGetRewardClick?.();
+                  }}
                   title="Получить такую же награду"
                 >
                   Получить такую же!

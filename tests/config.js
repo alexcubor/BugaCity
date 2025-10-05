@@ -5,7 +5,7 @@ const environment = process.argv[2] || 'local';
 const urls = {
   local: 'http://localhost:3000',
   npm: 'https://bugacity-npm.ru.tuna.am',
-  docker: 'https://bugacity-docker.ru.tuna.am',
+  docker: 'http://localhost:3001',
   prod: 'https://gluko.city'
 };
 

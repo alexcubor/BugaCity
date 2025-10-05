@@ -22,8 +22,13 @@ const HomePage: React.FC = () => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
     
-    // Если пользователь не авторизован, сразу перенаправляем на страницу авторизации
-    if (!token) {
+    // Проверяем URL параметры для модального окна награды
+    const urlParams = new URLSearchParams(window.location.search);
+    const userParam = urlParams.get('user');
+    const rewardParam = urlParams.get('reward');
+    
+    // Если пользователь не авторизован И нет параметров для просмотра награды, перенаправляем на страницу авторизации
+    if (!token && !userParam && !rewardParam) {
       window.location.href = '/auth';
       return;
     }
@@ -34,54 +39,58 @@ const HomePage: React.FC = () => {
 
     // Загружаем данные наград
     loadRewardsData();
-
-    // Проверяем URL параметры для модального окна награды
-    const urlParams = new URLSearchParams(window.location.search);
-    const userParam = urlParams.get('user');
-    const rewardParam = urlParams.get('reward');
     
-    if (userParam && rewardParam) {
-      // Если userParam выглядит как ID (MongoDB ObjectId или числовой ID), загружаем данные пользователя
-      if ((userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) || /^\d+$/.test(userParam)) {
-        fetch(`/api/users/${userParam}`)
-          .then(response => response.ok ? response.json() : null)
-          .then(userData => {
-            if (userData && userData.name) {
-              setRewardModalData({
-                rewardId: rewardParam,
-                userName: userData.name,
-                userId: userParam
-              });
-              setShowRewardModal(true);
-            } else {
-              // Если пользователь не найден, показываем с ID
+    if (rewardParam) {
+      if (userParam) {
+        // Если userParam выглядит как ID (MongoDB ObjectId или числовой ID), загружаем данные пользователя
+        if ((userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) || /^\d+$/.test(userParam)) {
+          fetch(`/api/users/${userParam}`)
+            .then(response => response.ok ? response.json() : null)
+            .then(userData => {
+              if (userData && userData.name) {
+                setRewardModalData({
+                  rewardId: rewardParam,
+                  userName: userData.name,
+                  userId: userParam
+                });
+                setShowRewardModal(true);
+              } else {
+                // Если пользователь не найден, показываем с ID
+                setRewardModalData({
+                  rewardId: rewardParam,
+                  userName: userParam,
+                  userId: userParam
+                });
+                setShowRewardModal(true);
+              }
+            })
+            .catch(() => {
+              // Если не удалось загрузить пользователя, показываем с ID
               setRewardModalData({
                 rewardId: rewardParam,
                 userName: userParam,
                 userId: userParam
               });
               setShowRewardModal(true);
-            }
-          })
-          .catch(() => {
-            // Если не удалось загрузить пользователя, показываем с ID
-            setRewardModalData({
-              rewardId: rewardParam,
-              userName: userParam,
-              userId: userParam
             });
-            setShowRewardModal(true);
+        } else {
+          // Если это не ID, показываем как есть
+          setRewardModalData({
+            rewardId: rewardParam,
+            userName: userParam,
+            userId: userParam
           });
+          setShowRewardModal(true);
+        }
       } else {
-        // Если это не ID, показываем как есть
+        // Если есть только rewardParam без userParam, показываем награду без имени пользователя
         setRewardModalData({
           rewardId: rewardParam,
-          userName: userParam,
-          userId: userParam
+          userName: 'Пользователь',
+          userId: undefined
         });
         setShowRewardModal(true);
       }
-    } else {
     }
 
   }, []);
@@ -342,7 +351,18 @@ const HomePage: React.FC = () => {
   };
 
   const handleGetRewardClick = () => {
-    // Открываем модальное окно награды
+    console.log('🔘 Кнопка "Получить такую же!" нажата');
+    console.log('🔐 isLoggedIn:', isLoggedIn);
+    
+    // Если пользователь не авторизован, перенаправляем на страницу авторизации
+    if (!isLoggedIn) {
+      console.log('🚀 Перенаправляем на страницу авторизации');
+      window.location.href = '/auth';
+      return;
+    }
+    
+    console.log('✅ Пользователь авторизован, открываем модальное окно');
+    // Если авторизован, открываем модальное окно награды
     setRewardModalData({
       rewardId: 'pioneer',
       userName: user?.name || 'Пользователь',
@@ -392,7 +412,12 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* UserMenu без header */}
-      {isLoggedIn && <UserMenu onLogout={handleLogout} onRewardClick={handleRewardClick} onUserNameChange={handleUserNameChange} />}
+      <UserMenu 
+        onLogout={handleLogout} 
+        onRewardClick={handleRewardClick} 
+        onUserNameChange={handleUserNameChange}
+        isUserLoggedIn={isLoggedIn}
+      />
 
       {/* Карта Mapbox на весь экран */}
       <MapboxMap 
@@ -400,6 +425,7 @@ const HomePage: React.FC = () => {
           width: '100vw', 
           height: '100vh' 
         }}
+        isUserLoggedIn={isLoggedIn}
       />
       
       {/* Модальное окно для ввода имени */}

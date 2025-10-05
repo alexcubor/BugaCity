@@ -11,6 +11,7 @@ interface UserMenuProps {
   onLogout: () => void;
   onRewardClick?: (reward: string) => void;
   onUserNameChange?: (newName: string) => void;
+  isUserLoggedIn?: boolean;
 }
 
 interface User {
@@ -29,7 +30,7 @@ interface Reward {
   price: number;
 }
 
-function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) {
+function UserMenu({ onLogout, onRewardClick, onUserNameChange, isUserLoggedIn = false }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,11 +43,11 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   useEffect(() => {
-    // Загружаем данные пользователя сразу при монтировании компонента
-    if (!user) {
+    // Загружаем данные пользователя только если он авторизован
+    if (isUserLoggedIn && !user) {
       loadUserData();
     }
-  }, []);
+  }, [isUserLoggedIn]);
 
   // Проверяем URL при загрузке страницы и при изменениях
   useEffect(() => {
@@ -289,8 +290,17 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
   return (
     <div className="user-menu">
       <div className="user-menu-label">
-        {/* Кнопка с именем пользователя для редактирования */}
-        {isEditingName ? (
+        {/* Кнопка с именем пользователя для редактирования или кнопка "Войти" */}
+        {!isUserLoggedIn ? (
+          <button 
+            className="login-button-simple"
+            onClick={() => {
+              window.location.href = '/auth';
+            }}
+          >
+            Войти
+          </button>
+        ) : isEditingName ? (
           <div>
             <input
               type="text"
@@ -316,7 +326,7 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
 
         {/* Кнопка с аватаром для открытия меню */}
         <button className="user-menu-icon" onClick={toggleMenu}>
-          {user?.id ? (
+          {isUserLoggedIn && user?.id ? (
             <div style={{ position: 'relative' }}>
               <img 
                 src={`/uploads/users/${user.id.substring(0, 8).padStart(8, '0')}/${user.id}/avatar.jpg`}
@@ -385,9 +395,11 @@ function UserMenu({ onLogout, onRewardClick, onUserNameChange }: UserMenuProps) 
             >
               Поддержать
             </button>
-            <button onClick={handleLogout}>
-              Выйти
-            </button>
+            {isUserLoggedIn && (
+              <button onClick={handleLogout}>
+                Выйти
+              </button>
+            )}
           </div>
         </div>
       )}

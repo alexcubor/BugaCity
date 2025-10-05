@@ -10,6 +10,7 @@ interface MapboxMapProps {
   zoom?: number;
   onMapLoad?: (map: mapboxgl.Map) => void;
   showControls?: boolean;
+  isUserLoggedIn?: boolean;
   customStyle?: string | mapboxgl.Style;
 }
 
@@ -20,6 +21,7 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
   zoom = 10,
   onMapLoad,
   showControls = true,
+  isUserLoggedIn = false,
   customStyle
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -34,24 +36,16 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
   const addCraneMarker = (coordinates: [number, number]) => {
     if (!map.current || craneAdded) return;
 
-    console.log('🏗️ Добавление маркера крана через Mapbox GL JS API:', coordinates);
-
     // Загружаем изображение крана
     map.current.loadImage('/images/construction_crane.png', (error, image) => {
       if (error) {
-        console.error('❌ Ошибка загрузки изображения крана:', error);
         return;
       }
-
-      console.log('✅ Изображение крана загружено:', image);
-      console.log('📏 Размер изображения:', image ? `${image.width}x${image.height}` : 'неизвестно');
 
       // Добавляем изображение в карту
       if (image) {
         map.current!.addImage('crane-icon', image);
-        console.log('✅ Изображение добавлено в карту как "crane-icon"');
       } else {
-        console.error('❌ Изображение не загружено');
         return;
       }
 
@@ -171,7 +165,6 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
       });
 
       setCraneAdded(true);
-      console.log('✅ Маркер крана добавлен через Mapbox GL JS API');
     });
   };
 
@@ -228,36 +221,30 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
     // Получаем токен из переменных окружения
     const token = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1IjoiYWxleGN1Ym9yIiwiYSI6ImNtZ2MyendmYTE2NnIya3IwaWdjcTdwd20ifQ.lHoZI2LuqkukgCq6i7PupQ';
     
-    console.log('🗺️ Инициализация карты Mapbox...');
-    console.log('🔑 Токен:', token ? 'найден' : 'не найден');
-    console.log('📍 Центр по умолчанию:', center);
-    console.log('🔍 Зум по умолчанию:', zoom);
-    
     if (!mapContainer.current) {
-      console.error('❌ Контейнер карты не найден');
       return;
     }
 
     // Проверяем, не создана ли уже карта
     if (map.current) {
-      console.log('⚠️ Карта уже существует, пропускаем создание');
       return;
     }
 
-    // Получаем геолокацию пользователя
-    getUserLocation()
-      .then((location) => {
-        setUserLocation(location);
-        setLocationStatus('success');
-        // Инициализируем карту с геолокацией пользователя
-        map.current = new mapboxgl.Map({
-          container: mapContainer.current!,
-          accessToken: token,
-          style: customStyle || 'mapbox://styles/mapbox/streets-v12',
-          center: location,
-          zoom: 15, // Ближе к пользователю
-          attributionControl: false
-        });
+    // Получаем геолокацию пользователя только если он авторизован
+    if (isUserLoggedIn) {
+      getUserLocation()
+        .then((location) => {
+          setUserLocation(location);
+          setLocationStatus('success');
+          // Инициализируем карту с геолокацией пользователя
+          map.current = new mapboxgl.Map({
+            container: mapContainer.current!,
+            accessToken: token,
+            style: customStyle || 'mapbox://styles/mapbox/streets-v12',
+            center: location,
+            zoom: 15, // Ближе к пользователю
+            attributionControl: false
+          });
         initializeMap();
       })
       .catch((error) => {
@@ -273,6 +260,19 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
         });
         initializeMap();
       });
+    } else {
+      // Для неавторизованных пользователей инициализируем карту без геолокации
+      setLocationStatus('denied');
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current!,
+        accessToken: token,
+        style: customStyle || 'mapbox://styles/mapbox/streets-v12',
+        center: center,
+        zoom: zoom,
+        attributionControl: false
+      });
+      initializeMap();
+    }
   }, []); // Убираем зависимости, чтобы карта создавалась только один раз
 
   const initializeMap = () => {
@@ -282,8 +282,6 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
 
     // Обработчики событий
     map.current.on('load', () => {
-      console.log('✅ Карта Mapbox загружена успешно');
-      
       // Скрываем все текстовые слои (надписи городов, улиц и т.д.)
       const style = map.current!.getStyle();
       if (style && style.layers) {
@@ -306,17 +304,12 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
       const mapBounds = map.current!.getBounds();
       
       if (!mapBounds) {
-        console.error('❌ Не удалось получить границы карты');
         return;
       }
       
       // Вычисляем координаты для левой части экрана (примерно 25% от левого края)
       const leftOffset = (mapBounds.getEast() - mapBounds.getWest()) * 0.25;
       const craneCoordinates: [number, number] = [mapBounds.getWest() + leftOffset, mapCenter.lat];
-      
-      console.log('🏗️ Центр карты:', mapCenter);
-      console.log('🏗️ Границы карты:', mapBounds);
-      console.log('🏗️ Координаты для маркера (левая часть):', craneCoordinates);
       
       // Добавляем маркер через Mapbox GL JS API
       addCraneMarker(craneCoordinates);
@@ -328,14 +321,8 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
     });
 
     map.current.on('error', (e) => {
-      console.error('❌ Ошибка загрузки карты Mapbox:', e);
       setError('Ошибка загрузки карты');
       setIsLoading(false);
-    });
-
-    // Добавляем дополнительные обработчики для диагностики
-    map.current.on('style.load', () => {
-      console.log('🎨 Стиль карты загружен');
     });
 
   };

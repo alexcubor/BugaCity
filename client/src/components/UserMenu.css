@@ -34,6 +34,12 @@
   translate: 0px -4px;
 }
 
+.login-button-simple {
+  backdrop-filter: blur(15px);
+  padding: 6px 10px;
+  translate: 0px -4px;
+}
+
 .user-menu-icon:hover {
   box-shadow: none;
 }
