@@ -41,14 +41,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   onGetRewardClick,
   showNotification = false
 }) => {
-  console.log('🎯 RewardViewer: Компонент инициализирован', {
-    rewardId,
-    size,
-    autoRotate,
-    isModal,
-    userName,
-    rewardName
-  });
   
   const [isLoading, setIsLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
@@ -112,24 +104,16 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
   };
 
   useEffect(() => {
-    console.log('🎯 RewardViewer: useEffect запущен', {
-      canvasRef: canvasRef.current,
-      rewardId,
-      isModal
-    });
     
     if (!canvasRef.current) {
-      console.log('❌ RewardViewer: canvasRef.current отсутствует');
       return;
     }
 
-    console.log('🎯 RewardViewer: Создаем движок и сцену');
     // Создаем движок и сцену
     const canvas = canvasRef.current;
     const engine = new Engine(canvas, true);
     const scene = new Scene(engine);
     
-    console.log('🎯 RewardViewer: Движок и сцена созданы', { engine, scene });
     
     // Устанавливаем прозрачный фон
     scene.clearColor = new Color4(0, 0, 0, 0);
@@ -402,11 +386,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
     setIsLoading(true);
     setLoadingError(null);
     
-    console.log('🎯 RewardViewer: Начинаем загрузку модели', {
-      rootUrl,
-      fileName,
-      rewardId
-    });
     
     SceneLoader.ImportMesh(
       '',
@@ -414,10 +393,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       fileName,
       scene,
       (meshes) => {
-        console.log('🎯 RewardViewer: Модель загружена', {
-          meshesCount: meshes.length,
-          meshes: meshes.map(m => m.name)
-        });
         // Центрируем модель
         if (meshes.length > 0) {
           const rootMesh = meshes[0];
@@ -685,12 +660,6 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
 
   // Если это модальное окно, рендерим с модальной оберткой
   if (isModal) {
-    console.log('🎯 RewardViewer: Рендерим модальное окно', {
-      isLoading,
-      loadingError,
-      rewardName,
-      rewardId
-    });
     
     return (
       <div className="modal-overlay" onClick={handleBackdropClick}>

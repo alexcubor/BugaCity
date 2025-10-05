@@ -12,11 +12,11 @@ async function deleteUserFromDB(email) {
     
     // Сначала пытаемся войти, чтобы получить токен
     let token = null;
-    const passwords = ['111', '111111a', '111111'];
+    const passwords = ['111', config.testAccount.password, '111111'];
     
     for (const password of passwords) {
       try {
-        const loginResponse = await fetch(`${config.api.baseUrl}/api/auth/login`, {
+        const loginResponse = await fetch(`${config.baseUrl}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -43,7 +43,7 @@ async function deleteUserFromDB(email) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const response = await fetch(`${config.api.baseUrl}/api/auth/delete-user`, {
+    const response = await fetch(`${config.baseUrl}/api/auth/delete-user`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ email })
@@ -72,7 +72,7 @@ async function logoutUser(page) {
     if (token) {
       console.log('🚪 Принудительный выход через API...');
       try {
-        await fetch(`${config.api.baseUrl}/api/auth/logout`, {
+        await fetch(`${config.baseUrl}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -136,26 +136,39 @@ async function testPasswordValidation(page, email, password, expectedError) {
   console.log(`🔒 Тестируем пароль: "${password}" (ожидаем: "${expectedError}")`);
   
   try {
-    // Проверяем, открыто ли модальное окно
-    const modalVisible = await page.isVisible('.auth-modal');
-    
-    if (!modalVisible) {
-      // Если модальное окно не открыто, открываем его
-      await page.click('.login-button');
+    // Проверяем, находимся ли мы на странице авторизации
+    const currentUrl = page.url();
+    if (!currentUrl.includes('/auth')) {
+      // Если не на странице авторизации, переходим туда
+      await page.goto(config.baseUrl + '/auth');
       await page.waitForTimeout(1000);
+    }
 
-      // Переходим на вкладку "Регистрация" - используем XPath селектор
-      await page.click('//*[@id="root"]/div/div[3]/div/button[2]');
+    // Ждем загрузки формы авторизации
+    await page.waitForSelector('.auth-form-container', { timeout: 5000 });
+
+    // Переходим на вкладку "Регистрация" (только если еще не на ней)
+    const isLoginMode = await page.isVisible('button:has-text("Регистрация")');
+    if (isLoginMode) {
+      await page.click('button:has-text("Регистрация")');
       await page.waitForTimeout(500);
+    }
 
-      // Заполняем email и отправляем код
+    // Заполняем email и отправляем код (только если поле пустое)
+    const emailField = await page.locator('input[type="email"]');
+    const emailValue = await emailField.inputValue();
+    if (!emailValue) {
       await page.fill('input[type="email"]', email);
       await page.press('input[type="email"]', 'Enter');
       await page.waitForTimeout(2000);
+    }
 
-      // Заполняем код подтверждения - используем XPath селектор
-      await page.fill('//*[@id="root"]/div/div[3]/div/form/div[1]/div[2]/input', '111111');
-      await page.press('//*[@id="root"]/div/div[3]/div/form/div[1]/div[2]/input', 'Enter');
+    // Заполняем код подтверждения (только если поле пустое)
+    const codeField = await page.locator('input[type="text"]');
+    const codeValue = await codeField.inputValue();
+    if (!codeValue) {
+      await page.fill('input[type="text"]', '111111');
+      await page.press('input[type="text"]', 'Enter');
       await page.waitForTimeout(2000);
     }
 
@@ -164,39 +177,43 @@ async function testPasswordValidation(page, email, password, expectedError) {
     await page.press('input[type="password"]', 'Enter');
     await page.waitForTimeout(500);
 
-    // Проверяем результат валидации
-    const messageElement = await page.locator('.message.error');
-    const messageText = await messageElement.textContent();
-    
     if (expectedError === null) {
       // Ожидаем, что пароль пройдет валидацию (нет ошибки)
-      if (!messageText || messageText.trim() === '') {
-        console.log(`✅ Пароль "${password}" корректно прошел валидацию`);
+      // Ждем немного, чтобы валидация сработала
+      await page.waitForTimeout(1000);
+      
+      // Проверяем, появилось ли поле подтверждения пароля
+      const confirmPasswordField = await page.locator('//*[@id="root"]/div/div[1]/div/div/div/form/div/div[4]/input');
+      const isVisible = await confirmPasswordField.isVisible();
+      
+      if (isVisible) {
+        console.log(`✅ Пароль "${password}" корректно прошел валидацию - появилось поле подтверждения`);
         
-        // Проверяем, что появилось поле подтверждения пароля
-        const confirmPasswordField = await page.locator('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=password]');
-        const isVisible = await confirmPasswordField.isVisible();
-        if (isVisible) {
-          console.log(`✅ Поле подтверждения пароля появилось`);
-          
-          // Заполняем поле подтверждения пароля
-          await confirmPasswordField.fill(password);
-          console.log(`✅ Поле подтверждения пароля заполнено`);
-          
-          await page.waitForTimeout(200);
-          return true;
-        } else {
-          console.log(`❌ ОШИБКА: Поле подтверждения пароля не появилось`);
-          await page.waitForTimeout(200);
-          return false;
-        }
+        // Заполняем поле подтверждения пароля
+        await confirmPasswordField.fill(password);
+        console.log(`✅ Поле подтверждения пароля заполнено`);
+        
+        await page.waitForTimeout(200);
+        return true;
       } else {
-        console.log(`❌ ОШИБКА: Пароль "${password}" должен был пройти валидацию, но получили ошибку: "${messageText}"`);
+        // Проверяем, есть ли ошибка валидации
+        const messageElement = await page.locator('.message.error');
+        const errorMessage = await messageElement.textContent();
+        if (errorMessage && errorMessage.trim() !== '') {
+          console.log(`❌ ОШИБКА: Пароль "${password}" должен был пройти валидацию, но получили ошибку: "${errorMessage}"`);
+        } else {
+          console.log(`❌ ОШИБКА: Пароль "${password}" прошел валидацию, но поле подтверждения не появилось`);
+        }
         await page.waitForTimeout(200);
         return false;
       }
     } else {
       // Ожидаем ошибку валидации
+      await page.waitForTimeout(1000); // Ждем валидацию
+      
+      const messageElement = await page.locator('.message.error');
+      const messageText = await messageElement.textContent();
+      
       if (messageText && messageText.includes(expectedError)) {
         console.log(`✅ Пароль "${password}" корректно отклонен: ${messageText}`);
         await page.waitForTimeout(200);
@@ -233,45 +250,22 @@ async function testEmailRegistration(page, email, password) {
       await page.waitForTimeout(800);
     }
     
-    // Открываем модальное окно авторизации
-    await page.click('.login-button');
-    await page.waitForSelector('.auth-modal', { timeout: 5000 });
+    // Форма авторизации уже видна на странице /auth
+    await page.waitForSelector('.auth-form-container', { timeout: 5000 });
     
-    // Переключаемся на регистрацию
-    console.log('🔄 Переключаемся на режим регистрации...');
-    await page.click('#root > div > div.auth-modal-overlay > div > button:nth-child(4)');
-    await page.waitForTimeout(500);
+    // Переключаемся на регистрацию (только если еще не в режиме регистрации)
+    const isLoginMode = await page.isVisible('button:has-text("Регистрация")');
+    if (isLoginMode) {
+      console.log('🔄 Переключаемся на режим регистрации...');
+      await page.click('button:has-text("Регистрация")');
+      await page.waitForTimeout(500);
+    } else {
+      console.log('ℹ️  Уже в режиме регистрации');
+    }
     
-    // Шаг 1: Заполняем email и нажимаем Enter
-    console.log('📝 Шаг 1: Заполняем email...');
-    await page.fill('#root > div > div.auth-modal-overlay > div > form > div > div > input[type=email]', email);
-    
-    console.log('⌨️ Нажимаем Enter...');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(800);
-    
-    // Шаг 2: Заполняем код подтверждения (111111) и нажимаем Enter
-    console.log('📝 Шаг 2: Заполняем код подтверждения...');
-    await page.fill('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=text]', '111111');
-    
-    console.log('⌨️ Нажимаем Enter...');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(800);
-    
-    // Шаг 3: Заполняем пароль и нажимаем Enter
-    console.log('📝 Шаг 3: Заполняем пароль...');
-    await page.fill('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=password]', password);
-    
-    console.log('⌨️ Нажимаем Enter...');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(800);
-    
-    // Шаг 4: Повторяем пароль и нажимаем Enter
-    console.log('📝 Шаг 4: Повторяем пароль...');
-    await page.fill('#root > div > div.auth-modal-overlay > div > form > div.form-fields-container > div.form-field.slide-in > input[type=password]', password);
-    
-    console.log('⌨️ Нажимаем Enter для регистрации...');
-    await page.keyboard.press('Enter');
+    // Все поля уже заполнены после тестов валидации, просто нажимаем кнопку регистрации
+    console.log('🔘 Нажимаем кнопку регистрации...');
+    await page.click('//*[@id="root"]/div/div[1]/div/div/div/form/button');
     
     // Ждем успешной регистрации - модальное окно должно закрыться
     console.log('⏳ Ждем завершения регистрации...');
@@ -287,13 +281,23 @@ async function testEmailRegistration(page, email, password) {
         console.log('✅ Модальное окно для ввода имени появилось');
         
         console.log('📝 Заполняем имя и фамилию...');
-        await page.fill('#root > div > div.modal-overlay > div > form > input[type=text]', 'Александр Кубор');
+        await page.fill('//*[@id="root"]/div[3]/div/form/input', 'Александр Кубор');
         
         console.log('⌨️ Нажимаем Enter для отправки формы с именем...');
         await page.keyboard.press('Enter');
         await page.waitForTimeout(800);
         
         console.log('✅ Имя и фамилия заполнены');
+        
+        // Нажимаем кнопку "Получить награду"
+        console.log('🏆 Нажимаем кнопку "Получить награду"...');
+        try {
+          await page.click('button:has-text("Получить награду")', { timeout: 5000 });
+          await page.waitForTimeout(1000);
+          console.log('✅ Кнопка "Получить награду" нажата');
+        } catch (error) {
+          console.log('ℹ️  Кнопка "Получить награду" не найдена или уже нажата');
+        }
         
         // Закрываем модальное окно с наградой
         console.log('🏆 Закрываем модальное окно с наградой...');
@@ -306,9 +310,8 @@ async function testEmailRegistration(page, email, password) {
           console.log('ℹ️  Модальное окно с наградой не найдено или уже закрыто');
         }
         
-        // Разлогиниваемся после получения награды
-        console.log('🚪 Разлогиниваемся после получения награды...');
-        await logoutUser(page);
+        // Тест завершен успешно, пользователь остается авторизованным
+        console.log('✅ Тест регистрации завершен успешно');
       } catch (error) {
         console.log('ℹ️  Модальное окно для ввода имени не появилось в течение 5 секунд');
       }
@@ -337,38 +340,43 @@ async function testEmailRegistration(page, email, password) {
 }
 
 // Основная функция теста
-async function runEmailRegistrationTest() {
+async function runEmailRegistrationTest(page = null, context = null) {
   console.log('🚀 Запуск теста регистрации через email');
   console.log('=====================================');
   console.log(`📁 Профиль: ${PROFILE_PATH}`);
-  console.log(`🌐 URL: ${config.api.baseUrl}`);
+  console.log(`🌐 URL: ${config.baseUrl}`);
   console.log('=====================================');
 
-  // Настройки браузера из конфигурации
-  const browserOptions = {
-    headless: config.browser.headless,
-    slowMo: config.browser.slowMo,
-    timeout: config.browser.timeout
-  };
+  // Используем переданные page и context или создаем новые
+  let shouldCloseContext = false;
+  if (!page || !context) {
+    // Настройки браузера из конфигурации
+    const browserOptions = {
+      headless: config.browser.headless,
+      slowMo: config.browser.slowMo,
+      timeout: config.browser.timeout
+    };
 
-  // Отключаем кэш если настроено
-  if (config.browser.disableCache) {
-    browserOptions.args = [
-      '--disable-application-cache',
-      '--disable-offline-load-stale-cache',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=TranslateUI',
-      '--disable-ipc-flooding-protection',
-      '--aggressive-cache-discard'
-    ];
-    console.log('🚫 Кэш браузера отключен');
+    // Отключаем кэш если настроено
+    if (config.browser.disableCache) {
+      browserOptions.args = [
+        '--disable-application-cache',
+        '--disable-offline-load-stale-cache',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--aggressive-cache-discard'
+      ];
+      console.log('🚫 Кэш браузера отключен');
+    }
+
+    context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
+    page = context.pages()[0] || await context.newPage();
+    shouldCloseContext = true;
   }
-
-  const context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
-  const page = context.pages()[0] || await context.newPage();
 
   // Слушаем события для отладки
   page.on('console', msg => {
@@ -394,15 +402,15 @@ async function runEmailRegistrationTest() {
   });
 
   try {
-    // Открываем сайт
-    await page.goto(config.api.baseUrl);
-    console.log(`🌐 Открыт сайт: ${config.api.baseUrl}`);
+    // Открываем страницу авторизации
+    await page.goto(config.baseUrl + '/auth');
+    console.log(`🌐 Открыт сайт: ${config.baseUrl}/auth`);
 
     // Ждем загрузки страницы
     await page.waitForLoadState('networkidle');
     
     // 1. Удаляем пользователя из базы данных
-    await deleteUserFromDB('sdiz@ya.ru');
+    await deleteUserFromDB(config.testAccount.email);
     
     // 2. Принудительно выходим из системы (если залогинены)
     console.log('🚪 Принудительно выходим из системы в начале теста...');
@@ -418,19 +426,19 @@ async function runEmailRegistrationTest() {
     const passwordTests = [
       { password: '111', expectedError: 'Пароль должен содержать минимум 6 символов' },
       { password: '111111', expectedError: 'Пароль должен содержать хотя бы одну букву' },
-      { password: '111111a', expectedError: null } // Правильный пароль, должен пройти
+      { password: config.testAccount.password, expectedError: null } // Правильный пароль, должен пройти
     ];
     
     let passwordTestsPassed = 0;
     for (const test of passwordTests) {
-      const passed = await testPasswordValidation(page, 'sdiz@ya.ru', test.password, test.expectedError);
+      const passed = await testPasswordValidation(page, config.testAccount.email, test.password, test.expectedError);
       if (passed) passwordTestsPassed++;
     }
     
     console.log(`\n📊 Результаты валидации паролей: ${passwordTestsPassed}/${passwordTests.length} тестов пройдено`);
 
     // 5. Тестируем регистрацию через email
-    const result = await testEmailRegistration(page, 'sdiz@ya.ru', '111111a');
+    const result = await testEmailRegistration(page, config.testAccount.email, config.testAccount.password);
     
     // Выводим результат
     console.log('\n📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ:');
@@ -447,10 +455,13 @@ async function runEmailRegistrationTest() {
 
   } catch (error) {
     console.error('❌ Произошла ошибка во время выполнения теста:', error);
+    return false;
   } finally {
     console.log('\n✅ Тестирование завершено');
-    await context.close();
-    console.log(`💾 Профиль сохранен: ${PROFILE_PATH}`);
+    // Закрываем браузер только если мы его создавали
+    if (shouldCloseContext && context) {
+      await context.close();
+    }
   }
 }
 

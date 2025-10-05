@@ -4,7 +4,8 @@
   top: 50vh;
   left: 50%;
   transform: translate(-50%, -50%);
-  min-width: 250px;
+  min-width: 280px;
+  width: 40%;
 }
 
 /* Убираем кнопку закрытия, так как это не модальное окно */

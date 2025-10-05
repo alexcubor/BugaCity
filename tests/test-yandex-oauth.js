@@ -14,7 +14,7 @@ async function deleteTestUser() {
   
   try {
     // Попробуем удалить конкретного пользователя через API
-    const response = await fetch(`${config.api.baseUrl}/api/users/${TEST_EMAIL}`, {
+    const response = await fetch(`${config.baseUrl}/api/users/${TEST_EMAIL}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -197,10 +197,11 @@ async function testYandexLogin(page) {
       console.log(`📍 Текущий URL: ${currentUrl}`);
       
       // Проверяем, что URL содержит наш домен (не остались на Yandex)
-      if (!currentUrl.includes('bugacity-docker.ru.tuna.am') && 
-          !currentUrl.includes('bugacity-npm.ru.tuna.am') && 
-          !currentUrl.includes('gluko.city') &&
-          !currentUrl.includes('localhost')) {
+      const isOurDomain = Object.values(config.urls).some(url => 
+        currentUrl.includes(new URL(url).hostname)
+      );
+      
+      if (!isOurDomain) {
         console.log('❌ Не находимся на главной странице приложения');
         return false;
       }
@@ -277,7 +278,7 @@ async function runYandexOAuthTest() {
   console.log('🚀 Запуск теста входа через Yandex OAuth');
   console.log('=====================================');
   console.log(`📁 Профиль: ${PROFILE_PATH}`);
-  console.log(`🌐 URL: ${config.api.baseUrl}`);
+  console.log(`🌐 URL: ${config.baseUrl}`);
   console.log('=====================================');
 
   // Удаляем тестового пользователя из базы данных
@@ -334,8 +335,8 @@ async function runYandexOAuthTest() {
 
   try {
     // Открываем сайт
-    await page.goto(config.api.baseUrl);
-    console.log(`🌐 Открыт сайт: ${config.api.baseUrl}`);
+    await page.goto(config.baseUrl);
+    console.log(`🌐 Открыт сайт: ${config.baseUrl}`);
 
     // Ждем загрузки страницы
     await page.waitForLoadState('networkidle');

@@ -6,13 +6,14 @@ const config = require('./config');
 // Постоянный профиль в корне репозитория
 const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
 
-async function launchPersistentBrowser(customUrl = null) {
-  const targetUrl = customUrl || config.api.baseUrl;
+async function launchPersistentBrowser(targetUrl = null) {
+  // Используем переданный URL или URL из конфигурации
+  const url = targetUrl || config.baseUrl;
   
   console.log('🚀 Запуск браузера с постоянным профилем');
   console.log('=====================================');
   console.log(`📁 Профиль: ${PROFILE_PATH}`);
-  console.log(`🌐 URL: ${targetUrl}`);
+  console.log(`🌐 URL: ${url}`);
   console.log('💾 Все данные сохраняются между сессиями');
   console.log('❌ Закройте браузер когда закончите');
   console.log('=====================================');
@@ -67,8 +68,8 @@ async function launchPersistentBrowser(customUrl = null) {
     });
 
     // Открываем сайт
-    await page.goto(targetUrl);
-    console.log(`🌐 Открыт сайт: ${targetUrl}`);
+    await page.goto(url);
+    console.log(`🌐 Открыт сайт: ${url}`);
     console.log('⏳ Ждем закрытия браузера...');
 
     // Ждем закрытия

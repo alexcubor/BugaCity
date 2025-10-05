@@ -40,16 +40,9 @@ const HomePage: React.FC = () => {
     const userParam = urlParams.get('user');
     const rewardParam = urlParams.get('reward');
     
-    console.log('🎯 HomePage: Проверяем URL параметры', {
-      userParam,
-      rewardParam,
-      search: window.location.search
-    });
-    
     if (userParam && rewardParam) {
-      console.log('🎯 HomePage: Найдены параметры user и reward, открываем модальное окно');
-      // Если userParam выглядит как ID, загружаем данные пользователя
-      if (userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) {
+      // Если userParam выглядит как ID (MongoDB ObjectId или числовой ID), загружаем данные пользователя
+      if ((userParam.length === 24 && /^[0-9a-fA-F]+$/.test(userParam)) || /^\d+$/.test(userParam)) {
         fetch(`/api/users/${userParam}`)
           .then(response => response.ok ? response.json() : null)
           .then(userData => {
@@ -57,6 +50,14 @@ const HomePage: React.FC = () => {
               setRewardModalData({
                 rewardId: rewardParam,
                 userName: userData.name,
+                userId: userParam
+              });
+              setShowRewardModal(true);
+            } else {
+              // Если пользователь не найден, показываем с ID
+              setRewardModalData({
+                rewardId: rewardParam,
+                userName: userParam,
                 userId: userParam
               });
               setShowRewardModal(true);
@@ -73,7 +74,6 @@ const HomePage: React.FC = () => {
           });
       } else {
         // Если это не ID, показываем как есть
-        console.log('🎯 HomePage: userParam не является ID, показываем как есть');
         setRewardModalData({
           rewardId: rewardParam,
           userName: userParam,
@@ -82,7 +82,6 @@ const HomePage: React.FC = () => {
         setShowRewardModal(true);
       }
     } else {
-      console.log('🎯 HomePage: Параметры user и reward не найдены в URL');
     }
 
   }, []);
@@ -159,7 +158,6 @@ const HomePage: React.FC = () => {
   // Отслеживаем изменения URL
   useEffect(() => {
     const checkUrl = () => {
-      console.log('🎯 HomePage: checkUrl вызван');
       const urlParams = new URLSearchParams(window.location.search);
       const userParam = urlParams.get('user');
       const rewardParam = urlParams.get('reward');
@@ -189,10 +187,8 @@ const HomePage: React.FC = () => {
       }
       
       if (userParam && rewardParam) {
-        console.log('🎯 HomePage: checkUrl - найдены параметры, вызываем openRewardModal');
         openRewardModal(userParam, rewardParam);
       } else if (showRewardModal) {
-        console.log('🎯 HomePage: checkUrl - закрываем модальное окно');
         setShowRewardModal(false);
         setRewardModalData(null);
       }
@@ -313,7 +309,6 @@ const HomePage: React.FC = () => {
   // Функция handleAuthSuccess убрана - авторизация теперь на отдельной странице
 
   const handleRewardModalClose = () => {
-    console.log('🎯 HomePage: handleRewardModalClose вызван');
     setShowRewardModal(false);
     setRewardModalData(null);
     // Убираем параметры из URL
@@ -321,7 +316,6 @@ const HomePage: React.FC = () => {
     url.searchParams.delete('user');
     url.searchParams.delete('reward');
     window.history.pushState({}, '', url);
-    console.log('🎯 HomePage: Модальное окно награды закрыто');
   };
 
   const handleShareClick = async () => {
@@ -348,11 +342,6 @@ const HomePage: React.FC = () => {
   };
 
   const handleGetRewardClick = () => {
-    console.log('🎯 HomePage: handleGetRewardClick вызван', {
-      user,
-      isLoggedIn
-    });
-    
     // Открываем модальное окно награды
     setRewardModalData({
       rewardId: 'pioneer',
@@ -360,22 +349,22 @@ const HomePage: React.FC = () => {
       userId: user?.id
     });
     setShowRewardModal(true);
-    
-    console.log('🎯 HomePage: Модальное окно награды открыто');
   };
 
-  const handleRewardClick = (reward: string) => {
-    console.log('🎯 HomePage: handleRewardClick вызван', { reward, user });
-    
+  const handleUserNameChange = (newName: string) => {
+    // Обновляем данные пользователя
+    loadUserData();
+  };
+
+  const handleRewardClick = (reward: string) => {    
     // Открываем модальное окно награды
-    setRewardModalData({
+    const modalData = {
       rewardId: reward,
       userName: user?.name || 'Пользователь',
       userId: user?.id
-    });
+    };
+    setRewardModalData(modalData);
     setShowRewardModal(true);
-    
-    console.log('🎯 HomePage: Модальное окно награды открыто из UserMenu');
   };
 
 
@@ -383,7 +372,7 @@ const HomePage: React.FC = () => {
   return (
     <>
       {/* UserMenu без header */}
-      {isLoggedIn && <UserMenu onLogout={handleLogout} onRewardClick={handleRewardClick} />}
+      {isLoggedIn && <UserMenu onLogout={handleLogout} onRewardClick={handleRewardClick} onUserNameChange={handleUserNameChange} />}
 
       {/* Карта Mapbox на весь экран */}
       <MapboxMap 
@@ -405,10 +394,6 @@ const HomePage: React.FC = () => {
                {/* Модальное окно для награды из URL */}
                {showRewardModal && rewardModalData && (
                  <>
-                   {console.log('🎯 HomePage: Рендерим модальное окно награды', {
-                     showRewardModal,
-                     rewardModalData
-                   })}
                    <Suspense fallback={<div style={{ 
                      display: 'flex', 
                      justifyContent: 'center', 

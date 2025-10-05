@@ -37,36 +37,21 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
         return;
       }
 
-      console.log('Запрашиваем геолокацию...');
-      console.log('Настройки:', {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
-      });
 
       // Проверяем разрешения (если поддерживается)
       if ('permissions' in navigator) {
         navigator.permissions.query({ name: 'geolocation' as PermissionName })
           .then((result) => {
-            console.log('Статус разрешения геолокации:', result.state);
-            if (result.state === 'denied') {
-              console.warn('Геолокация заблокирована пользователем');
-            }
+            // Разрешения проверены
           })
           .catch((err) => {
-            console.log('Не удалось проверить разрешения:', err);
+            // Не удалось проверить разрешения
           });
       }
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { longitude, latitude, accuracy } = position.coords;
-          console.log('Геолокация получена:', {
-            longitude,
-            latitude,
-            accuracy: `${accuracy}м`,
-            timestamp: new Date(position.timestamp).toLocaleString()
-          });
           resolve([longitude, latitude]);
         },
         (error) => {
@@ -82,12 +67,6 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
               errorMessage = 'Время ожидания геолокации истекло';
               break;
           }
-          console.warn('Ошибка получения геолокации:', errorMessage);
-          console.warn('Детали ошибки:', {
-            code: error.code,
-            message: error.message,
-            timestamp: new Date().toLocaleString()
-          });
           reject(error);
         },
         {
@@ -103,12 +82,7 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
     // Получаем токен из переменных окружения
     const token = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1IjoiYWxleGN1Ym9yIiwiYSI6ImNtZ2MyendmYTE2NnIya3IwaWdjcTdwd20ifQ.lHoZI2LuqkukgCq6i7PupQ';
     
-    console.log('🗺️ MapboxMap: Инициализация карты');
-    console.log('🗺️ MapboxMap: Токен:', token ? `${token.substring(0, 20)}...` : 'НЕ НАЙДЕН');
-    console.log('🗺️ MapboxMap: Контейнер:', mapContainer.current ? 'НАЙДЕН' : 'НЕ НАЙДЕН');
-    
     if (!mapContainer.current) {
-      console.error('🗺️ MapboxMap: Контейнер карты не найден!');
       return;
     }
 
@@ -131,7 +105,6 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
       .catch((error) => {
         // Если геолокация не удалась, используем центр по умолчанию
         setLocationStatus('error');
-        console.log('Геолокация недоступна, используем центр по умолчанию (Москва)');
         map.current = new mapboxgl.Map({
           container: mapContainer.current!,
           accessToken: token,
@@ -145,17 +118,12 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
   }, []);
 
   const initializeMap = () => {
-    console.log('🗺️ MapboxMap: initializeMap вызван');
     if (!map.current) {
-      console.error('🗺️ MapboxMap: map.current не найден в initializeMap!');
       return;
     }
 
-    console.log('🗺️ MapboxMap: Настраиваем обработчики событий');
-
     // Обработчики событий
     map.current.on('load', () => {
-      console.log('🗺️ MapboxMap: Карта загружена успешно!');
       
       setIsLoading(false);
       if (onMapLoad) {
@@ -164,7 +132,6 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
     });
 
     map.current.on('error', (e) => {
-      console.error('🗺️ MapboxMap: Ошибка карты:', e);
       setError('Ошибка загрузки карты');
       setIsLoading(false);
     });
@@ -188,7 +155,6 @@ const MapboxMap: React.FC<MapboxMapProps> = ({
   }, [center, zoom]);
 
 
-  console.log('🗺️ MapboxMap: Рендерим компонент', { isLoading, error, userLocation, locationStatus });
 
   return (
     <div className={`mapbox-map-container ${className}`} style={style}>

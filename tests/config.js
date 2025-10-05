@@ -1,21 +1,29 @@
-// Загружаем переменные окружения из .env файла
-require('dotenv').config();
+require('dotenv').config({ path: '.env.dev' });
 
-// Конфигурация для тестов
-module.exports = {
-  // API конфигурация
-  api: {
-    baseUrl: process.env.TEST_API_URL || 'https://bugacity-npm.ru.tuna.am',
-    npmUrl: 'https://bugacity-npm.ru.tuna.am',
-    dockerUrl: 'https://bugacity-docker.ru.tuna.am',
-    prodUrl: 'https://gluko.city'
-  },
-  
-  // Настройки браузера
+const environment = process.argv[2] || 'local';
+
+const urls = {
+  local: 'http://localhost:3000',
+  npm: 'https://bugacity-npm.ru.tuna.am',
+  docker: 'https://bugacity-docker.ru.tuna.am',
+  prod: 'https://gluko.city'
+};
+
+const config = {
+  baseUrl: process.env.TEST_API_URL || urls[environment] || urls.local,
+  urls: urls,
   browser: {
-    disableCache: true, // Отключить кэш браузера
-    headless: false, // Запускать в видимом режиме
-    slowMo: 500, // Задержка между действиями (мс)
-    timeout: 60000 // Таймаут для браузера
+    headless: false,
+    slowMo: 100,
+    timeout: 60000
+  },
+  testAccount: {
+    email: 'sdiz@ya.ru',
+    password: '111111a'
   }
 };
+
+console.log(`🌐 Окружение: ${environment}`);
+console.log(`🔗 URL: ${config.baseUrl}`);
+
+module.exports = config;

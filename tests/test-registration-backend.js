@@ -1,9 +1,10 @@
 const axios = require('axios');
 
 // Конфигурация
-const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:3000';
-const TEST_EMAIL = 'sdiz@ya.ru';
-const TEST_PASSWORD = '111111a';
+const config = require('./config');
+const API_BASE_URL = config.baseUrl;
+const TEST_EMAIL = config.testAccount.email;
+const TEST_PASSWORD = config.testAccount.password;
 const TEST_VERIFICATION_CODE = '111111';
 
 console.log('🧪 ТЕСТ BACKEND РЕГИСТРАЦИИ');

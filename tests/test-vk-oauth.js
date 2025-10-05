@@ -162,7 +162,7 @@ async function runVKOAuthTest() {
   console.log('🚀 Запуск теста входа через VK OAuth');
   console.log('=====================================');
   console.log(`📁 Профиль: ${PROFILE_PATH}`);
-  console.log(`🌐 URL: ${config.api.baseUrl}`);
+  console.log(`🌐 URL: ${config.baseUrl}`);
   console.log('=====================================');
 
   // Настройки браузера из конфигурации
@@ -216,8 +216,8 @@ async function runVKOAuthTest() {
 
   try {
     // Открываем сайт
-    await page.goto(config.api.baseUrl);
-    console.log(`🌐 Открыт сайт: ${config.api.baseUrl}`);
+    await page.goto(config.baseUrl);
+    console.log(`🌐 Открыт сайт: ${config.baseUrl}`);
 
     // Ждем загрузки страницы
     await page.waitForLoadState('networkidle');

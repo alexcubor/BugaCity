@@ -22,9 +22,8 @@
     "browser:npm": "node tests/open-browser.js https://bugacity-npm.ru.tuna.am",
     "browser:docker": "node tests/open-browser.js https://bugacity-docker.ru.tuna.am",
     "browser:prod": "node tests/open-browser.js https://gluko.city",
-    "test:all:npm": "node tests/test-all.js",
-    "test:all:docker": "TEST_API_URL=https://bugacity-docker.ru.tuna.am node tests/test-all.js",
-    "test:all:prod": "TEST_API_URL=https://gluko.city node tests/test-all.js"
+    "test": "node tests/run-test.js",
+    "test:help": "node tests/run-test.js --help"
   },
   "dependencies": {
     "@types/mapbox-gl": "^3.4.1",
