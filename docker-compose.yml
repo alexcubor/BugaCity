@@ -38,7 +38,8 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
-      MONGODB_URI: mongodb://bugacity_user:bugacity_password@${MONGODB_HOST:-bugacity_mongodb}:27017/bugacity?authSource=bugacity
+      DISABLE_RATE_LIMIT: 'true'
+      MONGODB_URI: mongodb://bugacity_user:bugacity_password@${MONGODB_HOST:-mongodb}:27017/bugacity?authSource=bugacity
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
       # Включаем чтение пароля Mongo из Docker secret и подключение по DNS-имени сервиса

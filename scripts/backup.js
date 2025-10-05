@@ -38,8 +38,8 @@ try {
   fs.mkdirSync(mongoBackupDir, { recursive: true });
   
   // Команда для бэкапа MongoDB с аутентификацией
-  const mongoBackupCmd = `docker exec $(docker ps -q -f name=bugacity_mongodb) mongodump --host localhost:27017 --db bugacity --username bugacity_user --password bugacity_password --authenticationDatabase bugacity --out /tmp/backup`;
-  const mongoCopyCmd = `docker cp $(docker ps -q -f name=bugacity_mongodb):/tmp/backup/bugacity ${mongoBackupDir}/`;
+  const mongoBackupCmd = `docker exec $(docker ps -q -f name=mongodb) mongodump --host localhost:27017 --db bugacity --username bugacity_user --password bugacity_password --authenticationDatabase bugacity --out /tmp/backup`;
+  const mongoCopyCmd = `docker cp $(docker ps -q -f name=mongodb):/tmp/backup/bugacity ${mongoBackupDir}/`;
   
   execSync(mongoBackupCmd, { stdio: 'inherit' });
   execSync(mongoCopyCmd, { stdio: 'inherit' });

@@ -13,13 +13,10 @@ secrets/
 Thumbs.db
 
 # Build files
+node_modules/
 dist/
 client/public/
 .tsbuildinfo
-
-# Dependencies
-node_modules/
-package-lock.json
 
 browser-profile/
 uploads/

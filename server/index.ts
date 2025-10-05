@@ -96,11 +96,12 @@ app.use(cors({
 
 // Шаг 3: Rate Limiting с исключениями для OAuth и dev окружения
 const isDevelopment = process.env.NODE_ENV === 'development';
-const disableRateLimit = isDevelopment;
+const disableRateLimit = isDevelopment || process.env.DISABLE_RATE_LIMIT === 'true';
 
 // Логируем состояние rate limiting
 if (disableRateLimit) {
-  console.log('🔓 Rate limiting отключен (dev режим)');
+  const reason = isDevelopment ? 'dev режим' : 'DISABLE_RATE_LIMIT=true';
+  console.log(`🔓 Rate limiting отключен (${reason})`);
 } else {
   console.log('🔒 Rate limiting включен (продакшн режим)');
 }
