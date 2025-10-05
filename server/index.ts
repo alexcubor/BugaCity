@@ -190,7 +190,7 @@ if (!mongoUri) {
   // Определяем режим работы приложения
   const isDevelopment = process.env.NODE_ENV === 'development';
   // Используем переменную окружения MONGODB_HOST или IP-адрес по умолчанию
-  const mongoHost = process.env.MONGODB_HOST || (isDevelopment ? '172.18.0.4' : 'bugacity_mongodb');
+  const mongoHost = process.env.MONGODB_HOST || (isDevelopment ? '172.18.0.4' : 'mongodb');
   console.log(`[DB] NODE_ENV: ${process.env.NODE_ENV}, isDevelopment: ${isDevelopment}, mongoHost: ${mongoHost}`);
   mongoUri = `mongodb://bugacity_user:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
 }
