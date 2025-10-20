@@ -32,7 +32,7 @@ export const tryNativeShare = async (shareData: ShareData): Promise<boolean> => 
       return true; // Успешно поделились через нативное меню
     } catch (error) {
       // Пользователь отменил или произошла ошибка
-      console.log('Web Share отменён или ошибка:', error);
+      // Web Share отменён или ошибка
       return false;
     }
   }
@@ -59,7 +59,7 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
       document.body.removeChild(textArea);
       return true;
     } catch (fallbackError) {
-      console.error('Не удалось скопировать в буфер обмена:', fallbackError);
+      // Не удалось скопировать в буфер обмена
       return false;
     }
   }

@@ -132,7 +132,8 @@ class AuthController {
 
   // Получение VK Client ID (публичный, не секрет)
   public getVKClientId(): string {
-    return process.env.VK_CLIENT_ID || '';
+    const { serverConfig } = require('../config');
+    return serverConfig.vkClientId;
   }
 
   // Получение VK секрета
@@ -146,7 +147,8 @@ class AuthController {
 
   // Получение Yandex Client ID (публичный, не секрет)
   public getYandexClientId(): string {
-    return process.env.YANDEX_CLIENT_ID || '';
+    const { serverConfig } = require('../config');
+    return serverConfig.yandexClientId;
   }
 
   // Получение Yandex секрета
@@ -160,10 +162,6 @@ class AuthController {
 
   // Генерация случайного кода
   private generateVerificationCode(email?: string): string {
-    // Костыль для тестов: для sdiz@ya.ru всегда возвращаем 111111
-    if (email === 'sdiz@ya.ru') {
-      return '111111';
-    }
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
@@ -224,6 +222,20 @@ class AuthController {
     }
   }
 
+  async validateVerificationCode(req: any, res: any) {
+    try {
+      const { email, code } = req.body || {};
+      if (!email || !code) {
+        return res.status(400).json({ valid: false, error: 'Email и код обязательны' });
+      }
+      const stored = authController.emailVerificationCodes.get(email);
+      const valid = !!stored && stored.code === code && Date.now() <= stored.expires;
+      return res.json({ valid });
+    } catch (error) {
+      return res.status(500).json({ valid: false, error: 'Ошибка проверки кода' });
+    }
+  }
+
   async register(req: any, res: any) {
     try {
       const { email, password, name, verificationCode } = req.body;
@@ -265,10 +277,23 @@ class AuthController {
       const hashedPassword = await bcrypt.hash(password, 12);
       
       const numericId = await authController.generateIncrementalId(db);
+
+      // Генерируем уникальный username на основе email
+      const baseUsername = (email.split('@')[0] || 'user')
+        .toLowerCase()
+        .replace(/[^a-z0-9_\-\.]/g, '_')
+        .slice(0, 24);
+      let username = baseUsername || `user_${numericId.slice(-4)}`;
+      let suffix = 1;
+      while (await db.collection('users').findOne({ username })) {
+        username = `${baseUsername}_${suffix}`.slice(0, 30);
+        suffix += 1;
+      }
       
       const userData: any = {
         _id: numericId,
         email,
+        username,
         password: hashedPassword,
         name: name || '',
         glukocoins: 0,
@@ -289,7 +314,15 @@ class AuthController {
         pioneerNumber: 1
       });
     } catch (error) {
-      res.status(500).json({ error: 'Ошибка регистрации' });
+      console.error('❌ Ошибка регистрации:', (error as any)?.message || error);
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: 'Ошибка регистрации', 
+          details: (error as any)?.message || String(error) 
+        });
+      } else {
+        res.status(500).json({ error: 'Ошибка регистрации' });
+      }
     }
   }
 
@@ -325,7 +358,11 @@ class AuthController {
         code: error.code,
         name: error.name
       });
-      res.status(500).json({ error: 'Ошибка входа' });
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ error: 'Ошибка входа', details: error?.message });
+      } else {
+        res.status(500).json({ error: 'Ошибка входа' });
+      }
     }
   }
 
@@ -366,10 +403,7 @@ class AuthController {
     };
   }
 
-  async exchangeYandexCode(code: string, host?: string) {
-    // Обмен кода на токен Яндекса
-    console.log('🔍 exchangeYandexCode вызван с параметрами:', { code, host });
-    
+  async exchangeYandexCode(code: string, host?: string) {    
     // Динамически определяем redirect URI на основе host
     const redirectUri = host && host.includes('bugacity-docker.ru.tuna.am') 
       ? 'https://bugacity-docker.ru.tuna.am/api/auth/callback'
@@ -377,7 +411,6 @@ class AuthController {
         ? 'https://gluko.city/api/auth/callback'
         : 'https://bugacity-npm.ru.tuna.am/api/auth/callback';
     
-    console.log('🔍 Используем redirectUri:', redirectUri);
     const yandexClientId = authController.getYandexClientId();
     const yandexClientSecret = authController.getYandexSecret();
     
@@ -515,9 +548,15 @@ class AuthController {
       console.log(`🔍 Обрабатываем OAuth callback: provider=${provider}, action=${action}`);
       
       if (provider === 'yandex') {
-        console.log('🔍 Начинаем обработку Yandex OAuth...');
-        const userData = await authController.exchangeYandexCode(code, req.headers.host);
-        console.log('🔍 Данные пользователя получены:', userData);
+        console.info('🔍 Начинаем обработку Yandex OAuth...', {
+          deviceInfo: req.deviceInfo
+        });
+        const host = Array.isArray(req.headers.host) ? req.headers.host[0] : req.headers.host;
+        const userData = await authController.exchangeYandexCode(code, host || undefined);
+        console.info('✅ Данные пользователя получены', {
+          userData: { name: userData.name, email: userData.email },
+          deviceInfo: req.deviceInfo
+        });
         
         const db = req.app.locals.db;
         if (!db) {

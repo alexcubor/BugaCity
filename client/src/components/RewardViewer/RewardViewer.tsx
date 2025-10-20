@@ -564,14 +564,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
       },
       undefined, // Прогресс загрузки не нужен
       (error) => {
-        // Ошибка загрузки
-        console.error('❌ RewardViewer: Ошибка загрузки модели', {
-          error: error.toString(),
-          rewardId,
-          rootUrl,
-          fileName
-        });
-        
+        // Ошибка загрузки модели
         setIsLoading(false);
         setLoadingError(`Ошибка загрузки модели: ${error.toString()}`);
         
@@ -656,7 +649,7 @@ const RewardViewerComponent: React.FC<RewardViewerComponentProps> = ({
         sceneRef.current.dispose();
       }
     };
-  }, [rewardId, size, autoRotate]);
+  }, [rewardId, size, autoRotate, userName]);
 
   // Если это модальное окно, рендерим с модальной оберткой
   if (isModal) {

@@ -1,13 +1,18 @@
 require('dotenv').config({ path: '.env.dev' });
 
-const environment = process.argv[2] || 'local';
+const environment = process.env.TEST_ENVIRONMENT || 'local';
 
 const urls = {
   local: 'http://localhost:3000',
   npm: 'https://bugacity-npm.ru.tuna.am',
-  docker: 'http://localhost:3001',
+  docker: 'https://bugacity-docker.ru.tuna.am',
   prod: 'https://gluko.city'
 };
+
+const fs = require('fs');
+
+// Читаем пароль из файла
+const mailPassword = fs.readFileSync('./secrets/mail_password.txt', 'utf8').trim();
 
 const config = {
   baseUrl: process.env.TEST_API_URL || urls[environment] || urls.local,
@@ -15,11 +20,14 @@ const config = {
   browser: {
     headless: false,
     slowMo: 100,
-    timeout: 60000
+    timeout: 60000,
+    showCursor: process.env.SHOW_CURSOR !== 'false', // Показываем виртуальный курсор (по умолчанию true)
+    devtools: process.env.DEVTOOLS === 'true', // Можно включить для отладки
+    disableCache: false // Не отключаем кэш, чтобы сохранить авторизацию
   },
   testAccount: {
-    email: 'sdiz@ya.ru',
-    password: '111111a'
+    email: 'admin@buga.city',
+    password: mailPassword
   }
 };
 

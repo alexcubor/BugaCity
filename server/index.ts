@@ -10,8 +10,10 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import rewardRoutes from './routes/rewards';
 import adminRoutes from './routes/admin';
+import friendRoutes from './routes/friends';
 import { authenticateToken } from './middleware/auth';
 import { requireAdmin } from './middleware/roles';
+import { initDevLogging } from './utils/devLogging';
 
 // Загружаем переменные окружения из .env.dev файла
 dotenv.config({ path: '.env.dev' });
@@ -44,7 +46,12 @@ app.use(helmet({
   hidePoweredBy: true // Скрываем X-Powered-By
 }));
 
-// Шаг 2: Добавляем ограниченный CORS с исключениями для OAuth
+// Инициализируем dev-логирование только в development режиме
+if (process.env.NODE_ENV === 'development') {
+  initDevLogging();
+}
+
+// Шаг 3: Добавляем ограниченный CORS с исключениями для OAuth
 const allowedOrigins = [
   'https://bugacity-npm.ru.tuna.am',
   'https://bugacity-docker.ru.tuna.am', 
@@ -169,6 +176,8 @@ if (!disableRateLimit) {
 }
 
 app.use(express.json());
+
+// Статические файлы
 app.use(express.static(path.join(process.cwd(), 'client/public')));
 
 // Статический роут для аватаров
@@ -189,21 +198,25 @@ if (!mongoUri) {
 
   // Определяем режим работы приложения
   const isDevelopment = process.env.NODE_ENV === 'development';
-  // Используем переменную окружения MONGODB_HOST или IP-адрес по умолчанию
-  const mongoHost = process.env.MONGODB_HOST || (isDevelopment ? '172.18.0.4' : 'mongodb');
-  console.log(`[DB] NODE_ENV: ${process.env.NODE_ENV}, isDevelopment: ${isDevelopment}, mongoHost: ${mongoHost}`);
-  mongoUri = `mongodb://bugacity_user:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
+  // Используем переменную окружения MONGODB_HOST или localhost для dev режима
+  const mongoHost = process.env.MONGODB_HOST || (isDevelopment ? 'localhost' : 'mongodb');
+  console.info('MongoDB connection config', { 
+    NODE_ENV: process.env.NODE_ENV, 
+    isDevelopment, 
+    mongoHost 
+  });
+  mongoUri = `mongodb://bugacity_admin:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
 }
 
-console.log('[DB] Connecting to MongoDB using URI:', mongoUri);
+console.info('Connecting to MongoDB', { uri: mongoUri.replace(/\/\/.*@/, '//***:***@') });
 async function connectWithRetry(attempt = 1): Promise<void> {
   try {
     const client = await MongoClient.connect(mongoUri as string, { maxPoolSize: 10 });
     const db = client.db('bugacity');
     (app as any).locals.db = db;
-    console.log('[DB] Connected to MongoDB (attempt', attempt, ')');
+    console.info(`✅ Connected to MongoDB (attempt ${attempt})`);
   } catch (err: any) {
-    console.error('[DB] Connection error (attempt', attempt, '):', err?.message || err);
+    console.error(`❌ MongoDB connection error (attempt ${attempt})`, { error: err?.message || err });
     if (attempt < 20) {
       setTimeout(() => connectWithRetry(attempt + 1), 1000);
     }
@@ -215,6 +228,7 @@ connectWithRetry();
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/friends', friendRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Временный отладочный endpoint для проверки подключения к БД
@@ -278,5 +292,5 @@ app.get('/admin', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+  console.info(`🚀 Server running on port ${PORT}`);
 });

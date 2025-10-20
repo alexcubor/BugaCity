@@ -1,5 +1,9 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const { chromium } = require('playwright');
+
+// Импортируем конфигурацию
+const config = require('./config');
 
 // Импортируем функции тестов с обработкой ошибок
 let runBackendTest, runEmailRegistrationTest, runYandexOAuthTest, runVKOAuthTest;
@@ -32,6 +36,63 @@ try {
   console.error('Ошибка импорта test-vk-oauth:', error.message);
 }
 
+// Функция для запуска браузера с постоянным профилем
+async function launchBrowser(url) {
+  console.log('🚀 Запуск браузера с постоянным профилем');
+  console.log('=====================================');
+  console.log(`🌐 URL: ${url}`);
+  console.log('💾 Все данные сохраняются между сессиями');
+  console.log('❌ Закройте браузер когда закончите');
+  console.log('=====================================');
+  
+  // Используем существующий профиль
+  const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
+  const browserOptions = {
+    headless: false,
+    slowMo: 100
+  };
+
+  const context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
+  const page = context.pages()[0] || await context.newPage();
+  
+  // Слушаем события
+  page.on('console', msg => {
+    console.log(`📝 [${msg.type()}] ${msg.text()}`);
+  });
+  
+  page.on('request', request => {
+    if (request.url().includes('oauth') || request.url().includes('auth')) {
+      console.log(`🌐 [REQUEST] ${request.method()} ${request.url()}`);
+    }
+  });
+  
+  page.on('response', response => {
+    if (response.url().includes('oauth') || response.url().includes('auth')) {
+      console.log(`📡 [RESPONSE] ${response.status()} ${response.url()}`);
+    }
+  });
+  
+  // Открываем сайт
+  await page.goto(url);
+  console.log(`🌐 Открыт сайт: ${url}`);
+  console.log('⏳ Ждем закрытия браузера...');
+
+  // Ждем закрытия браузера
+  await new Promise((resolve) => {
+    const checkInterval = setInterval(async () => {
+      try {
+        await page.evaluate(() => document.title);
+      } catch (error) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 1000);
+  });
+
+  console.log('✅ Браузер закрыт');
+  console.log(`💾 Профиль сохранен: ${PROFILE_PATH}`);
+}
+
 // Список доступных тестов
 const availableTests = {
   'reward': 'test-reward.js',
@@ -40,15 +101,24 @@ const availableTests = {
   'user-name': 'test-user-name-update.js',
   'registration-backend': 'test-registration-backend.js',
   'registration-frontend': 'test-registration-frontend.js',
+  'yandex-oauth': 'test-yandex-oauth.js',
+  'vk-oauth': 'test-vk-oauth.js',
   'all': 'internal', // Специальный маркер для внутренней функции
-  'browser': 'open-browser.js'
+  'browser': 'internal'
 };
 
 // Список доступных окружений
 const availableEnvironments = ['local', 'npm', 'docker', 'prod'];
 
 // Функция для запуска всех тестов
-async function runAllTests() {
+async function runAllTests(environment = 'local') {
+  // Устанавливаем переменную окружения для config.js
+  process.env.TEST_ENVIRONMENT = environment;
+  
+  // Принудительно перезагружаем config.js с новым окружением
+  delete require.cache[require.resolve('./config')];
+  const config = require('./config');
+  
   console.log('🚀 Запуск всех тестов');
   console.log('=====================================');
   console.log('📋 Тесты будут запущены в следующем порядке:');
@@ -60,6 +130,31 @@ async function runAllTests() {
     backendRegistration: false,
     yandexOAuth: false
   };
+
+  // Создаем браузер один раз для всех тестов с persistent context
+  const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
+  const browserOptions = {
+    headless: config.browser.headless,
+    slowMo: config.browser.slowMo || 100,
+    timeout: config.browser.timeout
+  };
+
+  if (config.browser.disableCache) {
+    browserOptions.args = [
+      '--disable-application-cache',
+      '--disable-offline-load-stale-cache',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-features=TranslateUI',
+      '--disable-ipc-flooding-protection',
+      '--aggressive-cache-discard'
+    ];
+  }
+
+  const context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
+  const page = context.pages()[0] || await context.newPage();
 
   try {
     // 1. Быстрый backend тест регистрации
@@ -85,7 +180,10 @@ async function runAllTests() {
       results.yandexOAuth = false;
     } else {
       try {
-        const yandexResult = await runYandexOAuthTest();
+        // Для OAuth тестов используем URL из конфигурации
+        console.log(`🌐 Используем URL для OAuth: ${config.baseUrl}`);
+        
+        const yandexResult = await runYandexOAuthTest(page, context);
         results.yandexOAuth = yandexResult;
         console.log(`✅ Тест входа через Yandex OAuth завершен: ${yandexResult ? 'УСПЕХ' : 'ОШИБКА'}\n`);
       } catch (error) {
@@ -97,6 +195,9 @@ async function runAllTests() {
 
   } catch (error) {
     console.error('❌ Критическая ошибка при запуске тестов:', error);
+  } finally {
+    // Закрываем контекст
+    await context.close();
   }
 
   // Выводим итоговые результаты
@@ -151,14 +252,20 @@ function showHelp() {
 
 // Функция для запуска множественных тестов
 async function runMultipleTests(testNames, environment) {
+  // Устанавливаем переменную окружения для config.js
+  process.env.TEST_ENVIRONMENT = environment;
+  
+  // Очищаем кэш модуля и перезагружаем config
+  delete require.cache[require.resolve('./config')];
   const config = require('./config');
   const path = require('path');
   
-  // Проверяем, нужен ли браузер для тестов
+  // Проверяем, нужен ли браузер для тестов (исключаем browser тест)
   const needsBrowser = testNames.some(testName => 
     testName === 'registration-frontend' || 
     testName === 'reward' || 
-    testName === 'browser'
+    testName === 'yandex-oauth' ||
+    testName === 'vk-oauth'
   );
   
   let context = null;
@@ -214,17 +321,33 @@ async function runMultipleTests(testNames, environment) {
         } else if (testName === 'registration-backend') {
           const { runBackendTest } = require('./test-registration-backend');
           result = await runBackendTest(environment);
+        } else if (testName === 'yandex-oauth') {
+          // Для OAuth тестов перезагружаем конфигурацию с правильным окружением
+          delete require.cache[require.resolve('./config')];
+          const { runYandexOAuthTest } = require('./test-yandex-oauth');
+          result = await runYandexOAuthTest(page, context);
+        } else if (testName === 'vk-oauth') {
+          // Для OAuth тестов используем URL из конфигурации
+          const { runVKOAuthTest } = require('./test-vk-oauth');
+          result = await runVKOAuthTest();
+        } else if (testName === 'browser') {
+          // Запуск браузера для ручного тестирования
+          try {
+            const url = config.urls[environment] || config.baseUrl;
+            console.log(`🔍 Browser тест: environment=${environment}, url=${url}`);
+            await launchBrowser(url);
+            result = true;
+          } catch (error) {
+            console.error('❌ Ошибка browser теста:', error.message);
+            result = false;
+          }
         } else {
           // Для других тестов используем старый способ
           const testFile = availableTests[testName];
           const testPath = path.join(__dirname, testFile);
           
           let spawnArgs = [testPath];
-          if (testName === 'browser') {
-            spawnArgs.push(config.urls[environment] || config.baseUrl);
-          } else {
-            spawnArgs.push(environment);
-          }
+          spawnArgs.push(environment);
           
           result = await new Promise((resolve) => {
             const child = spawn('node', spawnArgs, {
@@ -242,8 +365,12 @@ async function runMultipleTests(testNames, environment) {
           });
         }
         
-        console.log(`\n📊 Результат теста "${testName}": ${result ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
-        results.push({ testName, success: result, result });
+        if (testName === 'browser') {
+          console.log(`\n📝 Тест "${testName}" завершён (ручной). Исключён из оценки.`);
+        } else {
+          console.log(`\n📊 Результат теста "${testName}": ${result ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
+          results.push({ testName, success: result, result });
+        }
         
         // Если тест не прошел, продолжаем
         if (!result && i < testNames.length - 1) {
@@ -265,31 +392,78 @@ async function runMultipleTests(testNames, environment) {
   }
   
   // Выводим итоговые результаты
-  console.log('\n📊 ИТОГОВЫЕ РЕЗУЛЬТАТЫ:');
-  console.log('============================');
-  results.forEach((result, index) => {
-    const status = result.success ? '✅ УСПЕХ' : '❌ ОШИБКА';
-    console.log(`${index + 1}. ${result.testName}: ${status}`);
-  });
+  // Разделяем автоматические и ручные тесты
+  const automaticTests = results.filter(r => r.testName !== 'browser');
+  const manualTests = testNames.filter(name => name === 'browser');
   
-  const successCount = results.filter(r => r.success).length;
-  const totalCount = results.length;
+  if (automaticTests.length > 0) {
+    console.log('\n📊 АВТОМАТИЧЕСКИЕ ТЕСТЫ:');
+    console.log('============================');
+    automaticTests.forEach((result, index) => {
+      const status = result.success ? '✅ УСПЕХ' : '❌ ОШИБКА';
+      console.log(`${index + 1}. ${result.testName}: ${status}`);
+    });
+    
+    const successCount = automaticTests.filter(r => r.success).length;
+    const totalCount = automaticTests.length;
+    
+    console.log(`\n🎯 АВТОМАТИЧЕСКИЕ: ${successCount}/${totalCount} тестов пройдено`);
+    
+    if (successCount === totalCount && successCount > 0) {
+      console.log('🎉 ВСЕ АВТОМАТИЧЕСКИЕ ТЕСТЫ ПРОЙДЕНЫ УСПЕШНО!');
+    } else if (successCount > 0) {
+      console.log('⚠️  НЕКОТОРЫЕ АВТОМАТИЧЕСКИЕ ТЕСТЫ НЕ ПРОЙДЕНЫ');
+    }
+  }
   
-  console.log(`\n🎯 ИТОГО: ${successCount}/${totalCount} тестов пройдено`);
+  if (manualTests.length > 0) {
+    console.log('\n📝 РУЧНЫЕ ТЕСТЫ:');
+    console.log('============================');
+    manualTests.forEach((testName, index) => {
+      console.log(`${index + 1}. ${testName}: завершён (ручной)`);
+    });
+    console.log(`\n📝 РУЧНЫЕ: ${manualTests.length} тестов выполнено`);
+  }
   
-  if (successCount === totalCount) {
-    console.log('🎉 ВСЕ ТЕСТЫ ПРОЙДЕНЫ УСПЕШНО!');
-    process.exit(0);
+  // Выход с кодом только на основе автоматических тестов
+  if (automaticTests.length > 0) {
+    const successCount = automaticTests.filter(r => r.success).length;
+    const totalCount = automaticTests.length;
+    
+    if (successCount === totalCount) {
+      process.exit(0);
+    } else {
+      process.exit(1);
+    }
   } else {
-    console.log('⚠️  НЕКОТОРЫЕ ТЕСТЫ НЕ ПРОЙДЕНЫ');
-    process.exit(1);
+    // Если только ручные тесты, всегда успех
+    process.exit(0);
   }
 }
 
 function main() {
   const args = process.argv.slice(2);
 
-  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+  if (args.length === 0) {
+    // Если параметры не указаны, запускаем все тесты
+    runAllTests('local').then(success => {
+      console.log('');
+      console.log('============================');
+      if (success) {
+        console.log('✅ Все тесты завершены успешно');
+        process.exit(0);
+      } else {
+        console.log('❌ Некоторые тесты завершены с ошибкой');
+        process.exit(1);
+      }
+    }).catch(error => {
+      console.error('❌ Критическая ошибка:', error.message);
+      process.exit(1);
+    });
+    return;
+  }
+
+  if (args[0] === '--help' || args[0] === '-h') {
     showHelp();
     return;
   }
@@ -329,7 +503,7 @@ function main() {
 
   // Специальная обработка для теста 'all'
   if (testNames.includes('all')) {
-    runAllTests().then(success => {
+    runAllTests(environment).then(success => {
       console.log('');
       console.log('============================');
       if (success) {

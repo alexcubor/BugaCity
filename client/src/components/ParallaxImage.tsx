@@ -101,7 +101,7 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
         }
       }
     } catch (error) {
-      console.log('Ошибка запроса разрешения на гироскоп:', error);
+      // Ошибка запроса разрешения на гироскоп
       setGyroPermission('denied');
     }
   }, [sensitivity]);
@@ -304,7 +304,7 @@ const ParallaxImage: React.FC<ParallaxImageProps> = ({
     gl.compileShader(shader);
     
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+      // Shader compilation error
       gl.deleteShader(shader);
       return null;
     }

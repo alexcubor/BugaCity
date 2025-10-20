@@ -38,6 +38,7 @@ RUN npm ci --only=production && npm cache clean --force
 # Копируем собранное приложение из builder стадии
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nextjs:nodejs /app/client/public ./client/public
+COPY --from=builder --chown=nextjs:nodejs /app/client/src ./client/src
 
 # Создаем папку uploads с правильными правами (будет монтироваться как volume)
 RUN mkdir -p uploads && chown -R nextjs:nodejs uploads

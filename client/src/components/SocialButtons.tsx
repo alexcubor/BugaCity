@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { config } from '../config';
 import './SocialButtons.css';
+import config from '../config';
 
 interface SocialButtonsProps {
   isLogin: boolean;
@@ -36,7 +36,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
 
       // Инициализация конфигурации
       VKID.Config.init({
-        app: config.VK_CLIENT_ID,
+        app: config.vkClientId,
         redirectUrl: window.location.hostname === 'localhost' 
           ? 'http://localhost:3000/api/auth/callback'
           : window.location.hostname.includes('tuna.am')
@@ -88,7 +88,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
 
   const handleVKSuccess = async (data: any) => {
     try {
-      console.log('VK ID SDK success data:', data);
+      // VK ID SDK success data
       
       // Получаем информацию о пользователе через наш сервер (избегаем CORS)
       // Проверяем, есть ли user_id в данных
@@ -100,7 +100,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
       const userResponse = await fetch(`/api/auth/vk-user?accessToken=${encodeURIComponent(data.access_token)}&userId=${userId}`);
       const user = await userResponse.json();
       
-      console.log('VK user data from server:', user);
+      // VK user data from server
       
       if (user.error) {
         throw new Error('Ошибка получения данных пользователя');
@@ -118,7 +118,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
         action: isLogin ? 'login' : 'register'
       };
       
-      console.log('Sending to server:', requestData);
+      // Sending to server
       
       const response = await fetch('/api/auth/vk-callback', {
         method: 'POST',
@@ -145,7 +145,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
   };
 
   const handleVKError = (error: any) => {
-    console.error('VK ID Error:', error);
+    // VK ID Error
     alert('Ошибка авторизации через ВКонтакте');
   };
 
@@ -157,7 +157,7 @@ const SocialButtons: React.FC<SocialButtonsProps> = ({ isLogin, onSuccess, onErr
         ? `${window.location.protocol}//${window.location.host}/api/auth/callback`
         : 'https://gluko.city/api/auth/callback';
     
-    const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${config.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_${isLogin ? 'login' : 'register'}`;
+    const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${config.yandexClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_${isLogin ? 'login' : 'register'}`;
     
     // Открываем окно авторизации
     const popup = window.open(yandexAuthUrl, 'social_auth', 'width=600,height=600');

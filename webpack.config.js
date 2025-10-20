@@ -81,7 +81,7 @@ module.exports = (env, argv) => {
       }),
       new webpack.DefinePlugin({
         'process.env': JSON.stringify({
-          ...dotenv.config({ path: isDevelopment ? '.env.dev' : '.env' }).parsed,
+          ...dotenv.config({ path: '.env.dev' }).parsed,
           NODE_ENV: JSON.stringify(isDevelopment ? 'development' : 'production')
         })
       })

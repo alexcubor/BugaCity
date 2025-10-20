@@ -23,6 +23,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [showResendButton, setShowResendButton] = useState(false);
   
   const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,6 +39,18 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
     const timer = setTimeout(checkAutofill, 100);
     return () => clearTimeout(timer);
   }, [email]);
+
+  // Появление кнопки повторной отправки через 5 секунд на шаге верификации
+  useEffect(() => {
+    let timer: any;
+    if (showVerification && !showPassword) {
+      setShowResendButton(false);
+      timer = setTimeout(() => setShowResendButton(true), 5000);
+    } else {
+      setShowResendButton(false);
+    }
+    return () => timer && clearTimeout(timer);
+  }, [showVerification, showPassword]);
 
   const handleEmailInput = (e: React.FormEvent<HTMLInputElement>) => {
     setEmail(e.currentTarget.value);
@@ -66,17 +79,28 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
       });
 
       const result = await response.json();
-      
+
       if (response.ok) {
-        setIsCodeSent(true);
-        setMessage('Код подтверждения отправлен на вашу почту');
-        setMessageType('success');
-        // Сразу показываем поле для ввода кода
-        setIsAnimating(true);
-        setTimeout(() => {
-          setShowVerification(true);
-          setIsAnimating(false);
-        }, 300);
+        // Если код уже отправлялся, показываем эффект «мигания» сообщения и текст про повторную отправку
+        if (isCodeSent) {
+          // спрятать сообщение, затем показать через 500 мс
+          const prevType = messageType;
+          setMessage('');
+          setTimeout(() => {
+            setMessage('Код подтверждения отправлен повторно');
+            setMessageType('success');
+          }, 500);
+        } else {
+          setIsCodeSent(true);
+          setMessage('Код подтверждения отправлен на вашу почту');
+          setMessageType('success');
+          // Сразу показываем поле для ввода кода
+          setIsAnimating(true);
+          setTimeout(() => {
+            setShowVerification(true);
+            setIsAnimating(false);
+          }, 300);
+        }
       } else {
         setMessage(result.error || 'Ошибка отправки кода');
         setMessageType('error');
@@ -184,13 +208,29 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  const handleVerificationNext = () => {
+  const handleVerificationNext = async () => {
     if (verificationCode && !showPassword && !isAnimating) {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setShowPassword(true);
-        setIsAnimating(false);
-      }, 300);
+      try {
+        const resp = await fetch('/api/auth/validate-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code: verificationCode })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.valid) {
+          setIsAnimating(true);
+          setTimeout(() => {
+            setShowPassword(true);
+            setIsAnimating(false);
+          }, 300);
+        } else {
+          setMessage('Неверный или устаревший код подтверждения');
+          setMessageType('error');
+        }
+      } catch (e) {
+        setMessage('Ошибка проверки кода');
+        setMessageType('error');
+      }
     }
   };
 
@@ -215,7 +255,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
   };
 
   const handleSocialSuccess = (data: any) => {
-    console.log('Social login success:', data);
+    // Social login success
   };
 
   const handleSocialError = (error: any) => {
@@ -330,9 +370,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userId', result.userId);
         
-        // Если это регистрация (не логин), перенаправляем на награду
+        // Если это регистрация (не логин), перенаправляем на главную страницу
         if (!isLogin) {
-          window.location.href = '/?reward=pioneer';
+          window.location.href = '/';
         } else {
           onAuthSuccess(result.token, result.userId);
         }
@@ -426,7 +466,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                   required
                   style={{
                     borderColor: emailError ? '#ff4444' : '',
-                    borderWidth: emailError ? '2px' : '1px'
+                    borderWidth: emailError ? '1px' : '1px'
                   }}
                 />
               </div>
@@ -499,7 +539,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                     required
                     style={{
                       borderColor: passwordError ? '#ff4444' : '',
-                      borderWidth: passwordError ? '2px' : '1px'
+                      borderWidth: passwordError ? '1px' : '1px'
                     }}
                   />
                 </div>
@@ -560,7 +600,25 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
               </>
             )}
           </div>
-          
+
+          {showVerification && !showPassword && showResendButton && (
+            <div style={{ textAlign: 'right', alignItems: 'center' }}>
+              <button 
+                type="button"
+                onClick={handleSendVerificationCode}
+                style={{
+                  width: 'auto',
+                  padding: '6px',
+                  boxSizing: 'border-box',
+                  borderColor: '#deb88775',
+                  borderWidth: '1px'
+                }}
+              >
+                Отправить код повторно
+              </button>
+            </div>
+          )}
+
           {message && (
             <div className={`message ${messageType}`}>
               {message}
@@ -576,6 +634,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
               Далее
             </button>
           ) : showVerification && !showPassword ? (
+            <>
             <div style={{ flexDirection: 'row', gap: '10px', alignItems: 'center' }}>
               <button 
                 type="button" 
@@ -599,6 +658,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                 Далее
               </button>
             </div>
+            </>
           ) : showPassword && !showConfirmPassword ? (
             isLogin ? (
               <div style={{ flexDirection: 'row', gap: '10px', alignItems: 'center' }}>
@@ -653,17 +713,34 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
               </div>
             )
           ) : (
-            <button type="submit" >
-              Зарегистрироваться
-            </button>
+            <div style={{ flexDirection: 'row', gap: '10px', alignItems: 'center' }}>
+              <button 
+                type="button" 
+                onClick={handleBack}
+                style={{
+                  width: '40px', 
+                  minWidth: '40px',
+                  flexShrink: 0
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                </svg>
+              </button>
+              <button type="submit" style={{ flex: '1' }}>
+                Зарегистрироваться
+              </button>
+            </div>
           )}
         </form>
         
         <div>
             <button 
             onClick={() => {
+                const savedEmail = email; // сохраняем введённый email
                 setIsLogin(!isLogin);
                 resetForm();
+                setEmail(savedEmail); // возвращаем email после сброса формы
             }}
             >
             {isLogin ? 'Регистрация' : 'Вход'}

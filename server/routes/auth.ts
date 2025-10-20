@@ -10,6 +10,7 @@ router.post('/check-email', authController.checkEmailExists);
 
 // Отправка кода подтверждения
 router.post('/send-verification', authController.sendVerificationCode);
+router.post('/validate-code', authController.validateVerificationCode);
 
 // Registration
 router.post('/register', authController.register);

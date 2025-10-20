@@ -1,9 +1,145 @@
 const { chromium } = require('playwright');
-const config = require('./config');
 const path = require('path');
+const Imap = require('imap');
+const { simpleParser } = require('mailparser');
+
+// Загружаем config динамически
+function getConfig() {
+  return require('./config');
+}
 
 // Путь к профилю браузера
 const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
+
+// Функция для получения кода верификации с почты
+const getVerificationCodeFromEmail = async () => {
+  return new Promise((resolve, reject) => {
+    // Таймаут 30 секунд
+    const timeout = setTimeout(() => {
+      imap.end();
+      reject(new Error('Таймаут при получении кода с почты (30 сек)'));
+    }, 30000);
+
+    const imap = new Imap({
+      user: getConfig().testAccount.email,
+      password: getConfig().testAccount.password,
+      host: 'mail.jino.ru',
+      port: 993,
+      tls: true,
+      tlsOptions: { rejectUnauthorized: false }
+    });
+
+    imap.once('ready', () => {
+      imap.openBox('INBOX', false, (err, box) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Ищем последние письма (сначала непрочитанные, потом все)
+        console.log('🔍 Ищем непрочитанные письма от hello@gluko.city...');
+        imap.search(['UNSEEN', ['FROM', 'hello@gluko.city']], (err, results) => {
+          if (err) {
+            console.log('❌ Ошибка поиска непрочитанных писем:', err.message);
+            clearTimeout(timeout);
+            imap.end();
+            reject(err);
+            return;
+          }
+          
+          if (results.length === 0) {
+            // Если непрочитанных нет, ищем все письма от отправителя
+            console.log('📧 Непрочитанных писем нет, ищем все письма от hello@gluko.city...');
+            imap.search([['FROM', 'hello@gluko.city']], (err2, results2) => {
+              if (err2) {
+                console.log('❌ Ошибка поиска всех писем:', err2.message);
+                clearTimeout(timeout);
+                imap.end();
+                reject(err2);
+                return;
+              }
+              
+              if (results2.length === 0) {
+                console.log('❌ Писем от hello@gluko.city не найдено');
+                clearTimeout(timeout);
+                imap.end();
+                reject(new Error('Не найдено писем с кодом верификации'));
+                return;
+              }
+              
+              console.log(`📧 Найдено ${results2.length} писем от hello@gluko.city`);
+              processMessages(results2);
+            });
+          } else {
+            console.log(`📧 Найдено ${results.length} непрочитанных писем от hello@gluko.city`);
+            processMessages(results);
+          }
+        });
+
+        function processMessages(results) {
+          console.log(`📧 Обрабатываем ${results.length} писем...`);
+          const messageId = results.slice(-1)[0]; // Берем последнее письмо
+          console.log(`📧 Берем письмо с ID: ${messageId}`);
+          const fetch = imap.fetch(messageId, { bodies: '' });
+          
+          fetch.on('message', (msg, seqno) => {
+            console.log(`📧 Обрабатываем письмо ${seqno}...`);
+            msg.on('body', (stream, info) => {
+              console.log(`📧 Парсим тело письма...`);
+              simpleParser(stream, (err, parsed) => {
+                if (err) {
+                  console.log(`❌ Ошибка парсинга письма:`, err.message);
+                  reject(err);
+                  return;
+                }
+
+                const text = parsed.text || '';
+                console.log(`📧 Текст письма (первые 200 символов):`, text.substring(0, 200));
+                
+                const codeMatch = text.match(/код верификации[:\s]*(\d{6})/i) || 
+                                 text.match(/verification code[:\s]*(\d{6})/i) ||
+                                 text.match(/(\d{6})/);
+
+                console.log(`🔍 Найденный код:`, codeMatch ? codeMatch[1] : 'не найден');
+
+                if (codeMatch) {
+                  console.log(`✅ Код найден: ${codeMatch[1]}`);
+                  clearTimeout(timeout);
+                  resolve(codeMatch[1]);
+                  imap.end();
+                } else {
+                  clearTimeout(timeout);
+                  imap.end();
+                  reject(new Error('Код верификации не найден в письме'));
+                }
+              });
+            });
+          });
+
+          fetch.once('error', (err) => {
+            clearTimeout(timeout);
+            imap.end();
+            reject(err);
+          });
+
+          fetch.once('end', () => {
+            if (!imap._ended) {
+              imap.end();
+            }
+          });
+        }
+      });
+    });
+
+    imap.once('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    imap.connect();
+  });
+};
+
 
 // Функция для удаления пользователя из базы данных
 async function deleteUserFromDB(email) {
@@ -12,11 +148,11 @@ async function deleteUserFromDB(email) {
     
     // Сначала пытаемся войти, чтобы получить токен
     let token = null;
-    const passwords = ['111', config.testAccount.password, '111111'];
+    const passwords = ['111', getConfig().testAccount.password, '111111'];
     
     for (const password of passwords) {
       try {
-        const loginResponse = await fetch(`${config.baseUrl}/api/auth/login`, {
+        const loginResponse = await fetch(`${getConfig().baseUrl}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -43,7 +179,7 @@ async function deleteUserFromDB(email) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const response = await fetch(`${config.baseUrl}/api/auth/delete-user`, {
+    const response = await fetch(`${getConfig().baseUrl}/api/auth/delete-user`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ email })
@@ -72,7 +208,7 @@ async function logoutUser(page) {
     if (token) {
       console.log('🚪 Принудительный выход через API...');
       try {
-        await fetch(`${config.baseUrl}/api/auth/logout`, {
+        await fetch(`${getConfig().baseUrl}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -140,42 +276,47 @@ async function testPasswordValidation(page, email, password, expectedError) {
     const currentUrl = page.url();
     if (!currentUrl.includes('/auth')) {
       // Если не на странице авторизации, переходим туда
-      await page.goto(config.baseUrl + '/auth');
+      await page.goto(getConfig().baseUrl + '/auth');
       await page.waitForTimeout(1000);
     }
 
     // Ждем загрузки формы авторизации
     await page.waitForSelector('.auth-form-container', { timeout: 5000 });
 
-    // Переходим на вкладку "Регистрация" (только если еще не на ней)
-    const isLoginMode = await page.isVisible('button:has-text("Регистрация")');
-    if (isLoginMode) {
-      await page.click('button:has-text("Регистрация")');
-      await page.waitForTimeout(500);
-    }
+             // Переходим на вкладку "Регистрация" (только если еще не на ней)
+             const isLoginMode = await page.isVisible('button:has-text("Регистрация")');
+             if (isLoginMode) {
+               await page.click('button:has-text("Регистрация")');
+               await page.waitForTimeout(500);
+             }
 
-    // Заполняем email и отправляем код (только если поле пустое)
-    const emailField = await page.locator('input[type="email"]');
-    const emailValue = await emailField.inputValue();
-    if (!emailValue) {
-      await page.fill('input[type="email"]', email);
-      await page.press('input[type="email"]', 'Enter');
-      await page.waitForTimeout(2000);
-    }
+             // Заполняем email и отправляем код (только если поле пустое)
+             const emailField = await page.locator('input[type="email"]');
+             const emailValue = await emailField.inputValue();
+             if (!emailValue) {
+               await page.fill('input[type="email"]', email);
+               await page.press('input[type="email"]', 'Enter');
+               await page.waitForTimeout(2000);
+             }
 
-    // Заполняем код подтверждения (только если поле пустое)
-    const codeField = await page.locator('input[type="text"]');
-    const codeValue = await codeField.inputValue();
-    if (!codeValue) {
-      await page.fill('input[type="text"]', '111111');
-      await page.press('input[type="text"]', 'Enter');
-      await page.waitForTimeout(2000);
-    }
+             // Заполняем код подтверждения (только если поле пустое)
+             const codeField = await page.locator('input[type="text"]');
+             const codeValue = await codeField.inputValue();
+             if (!codeValue) {
+               // Получаем реальный код из почты
+               console.log('📧 Получаем код верификации из почты...');
+               const verificationCode = await getVerificationCodeFromEmail();
+               console.log(`✅ Получен код: ${verificationCode}`);
+               
+               await page.fill('input[type="text"]', verificationCode);
+               await page.press('input[type="text"]', 'Enter');
+               await page.waitForTimeout(2000);
+             }
 
-    // Заполняем поле пароля и нажимаем Enter
-    await page.fill('input[type="password"]', password);
-    await page.press('input[type="password"]', 'Enter');
-    await page.waitForTimeout(500);
+             // Заполняем поле пароля и нажимаем Enter
+             await page.fill('input[type="password"]', password);
+             await page.press('input[type="password"]', 'Enter');
+             await page.waitForTimeout(500);
 
     if (expectedError === null) {
       // Ожидаем, что пароль пройдет валидацию (нет ошибки)
@@ -239,6 +380,72 @@ async function testPasswordValidation(page, email, password, expectedError) {
   }
 }
 
+// Функция для тестирования поля имени и кнопки "Получить награду"
+async function testNameInput(page) {
+  console.log(`\n📝 Тестируем поле имени и кнопку "Получить награду"`);
+  
+  try {
+    console.log('📝 Заполняем имя и фамилию...');
+    // Попробуем разные селекторы для поля ввода имени
+    const nameInputSelectors = [
+      'input[placeholder="Имя и фамилия"]',
+      'input[placeholder*="Имя и фамилия"]',
+      'input[placeholder*="имя" i]',
+      'input[placeholder*="name" i]',
+      'input[type="text"]',
+      'input:not([type="email"]):not([type="password"])',
+      '//*[@id="root"]/div[3]/div/form/input'
+    ];
+    
+    let nameInputFound = false;
+    for (const selector of nameInputSelectors) {
+      try {
+        await page.fill(selector, 'Александр Кубор');
+        console.log(`✅ Имя заполнено с селектором: ${selector}`);
+        nameInputFound = true;
+        break;
+      } catch (error) {
+        console.log(`ℹ️  Селектор ${selector} не сработал`);
+      }
+    }
+    
+    if (!nameInputFound) {
+      console.log('❌ Не удалось найти поле для ввода имени');
+      return false;
+    }
+    
+    console.log('⌨️ Нажимаем Enter для отправки формы с именем...');
+    await page.keyboard.press('Enter');
+    console.log('⏳ Ждем 2 секунды после отправки формы...');
+    await page.waitForTimeout(2000);
+    
+    console.log('✅ Имя и фамилия заполнены');
+    
+    // Нажимаем кнопку "Получить награду"
+    console.log('🏆 Нажимаем кнопку "Получить награду"...');
+    try {
+      await page.click('button:has-text("Получить награду")', { timeout: 5000 });
+      console.log('⏳ Ждем 3 секунды, чтобы увидеть модальное окно с наградой...');
+      await page.waitForTimeout(3000);
+      console.log('✅ Кнопка "Получить награду" нажата');
+    } catch (error) {
+      console.log('ℹ️  Кнопка "Получить награду" не найдена или уже нажата');
+    }
+    
+    // НЕ закрываем модальное окно с наградой - оставляем его открытым для просмотра
+    console.log('🏆 Модальное окно с наградой оставлено открытым для просмотра');
+    console.log('⏳ Ждем еще 5 секунд, чтобы увидеть результат...');
+    await page.waitForTimeout(5000);
+    
+    // Тест завершен успешно, пользователь остается авторизованным
+    console.log('✅ Тест регистрации завершен успешно');
+    return true;
+  } catch (error) {
+    console.error(`❌ Ошибка при тестировании поля имени: ${error.message}`);
+    return false;
+  }
+}
+
 async function testEmailRegistration(page, email, password) {
   console.log(`\n📧 Тестируем регистрацию через email: ${email}`);
   
@@ -265,7 +472,7 @@ async function testEmailRegistration(page, email, password) {
     
     // Все поля уже заполнены после тестов валидации, просто нажимаем кнопку регистрации
     console.log('🔘 Нажимаем кнопку регистрации...');
-    await page.click('//*[@id="root"]/div/div[1]/div/div/div/form/button');
+    await page.click('button[type="submit"]');
     
     // Ждем успешной регистрации - модальное окно должно закрыться
     console.log('⏳ Ждем завершения регистрации...');
@@ -276,44 +483,44 @@ async function testEmailRegistration(page, email, password) {
       
       // Ждем появления модального окна для ввода имени
       console.log('🔍 Ждем появления модального окна для ввода имени...');
-      try {
-        await page.waitForSelector('.modal-overlay', { timeout: 5000 });
-        console.log('✅ Модальное окно для ввода имени появилось');
-        
-        console.log('📝 Заполняем имя и фамилию...');
-        await page.fill('//*[@id="root"]/div[3]/div/form/input', 'Александр Кубор');
-        
-        console.log('⌨️ Нажимаем Enter для отправки формы с именем...');
-        await page.keyboard.press('Enter');
-        await page.waitForTimeout(800);
-        
-        console.log('✅ Имя и фамилия заполнены');
-        
-        // Нажимаем кнопку "Получить награду"
-        console.log('🏆 Нажимаем кнопку "Получить награду"...');
+      console.log('⏳ Ждем 3 секунды, чтобы увидеть модальное окно...');
+      await page.waitForTimeout(3000);
+      
+      // Проверяем, что происходит на странице после регистрации
+      console.log('🔍 Проверяем текущий URL:', page.url());
+      
+      // Ищем различные возможные селекторы модального окна
+      const modalSelectors = [
+        '.modal-overlay',
+        '.modal',
+        '[role="dialog"]',
+        '.dialog',
+        '.popup',
+        '.overlay'
+      ];
+      
+      let modalFound = false;
+      for (const selector of modalSelectors) {
         try {
-          await page.click('button:has-text("Получить награду")', { timeout: 5000 });
-          await page.waitForTimeout(1000);
-          console.log('✅ Кнопка "Получить награду" нажата');
+          await page.waitForSelector(selector, { timeout: 2000 });
+          console.log(`✅ Модальное окно найдено с селектором: ${selector}`);
+          modalFound = true;
+          break;
         } catch (error) {
-          console.log('ℹ️  Кнопка "Получить награду" не найдена или уже нажата');
+          console.log(`ℹ️  Селектор ${selector} не найден`);
         }
-        
-        // Закрываем модальное окно с наградой
-        console.log('🏆 Закрываем модальное окно с наградой...');
-        try {
-          // Кликаем в любом месте кроме canvas для закрытия модального окна
-          await page.click('header', { timeout: 1000 });
-          await page.waitForTimeout(500);
-          console.log('✅ Модальное окно с наградой закрыто');
-        } catch (error) {
-          console.log('ℹ️  Модальное окно с наградой не найдено или уже закрыто');
+      }
+      
+      if (modalFound) {
+        console.log('📝 Пытаемся заполнить имя и нажать кнопку "Получить награду"...');
+        const nameResult = await testNameInput(page);
+        if (nameResult) {
+          console.log('✅ Успешно заполнили имя и нажали кнопку награды');
+        } else {
+          console.log('❌ Не удалось заполнить имя или найти кнопку награды');
         }
-        
-        // Тест завершен успешно, пользователь остается авторизованным
-        console.log('✅ Тест регистрации завершен успешно');
-      } catch (error) {
-        console.log('ℹ️  Модальное окно для ввода имени не появилось в течение 5 секунд');
+      } else {
+        console.log('ℹ️  Модальное окно для ввода имени не найдено');
       }
       
       return true;
@@ -344,7 +551,9 @@ async function runEmailRegistrationTest(page = null, context = null) {
   console.log('🚀 Запуск теста регистрации через email');
   console.log('=====================================');
   console.log(`📁 Профиль: ${PROFILE_PATH}`);
-  console.log(`🌐 URL: ${config.baseUrl}`);
+  console.log(`🌐 URL: ${getConfig().baseUrl}`);
+  console.log(`🖱️  Виртуальный курсор: ${getConfig().browser.showCursor ? '✅ Включен' : '❌ Отключен'}`);
+  console.log(`⏱️  Скорость анимации: ${getConfig().browser.slowMo}ms`);
   console.log('=====================================');
 
   // Используем переданные page и context или создаем новые
@@ -352,14 +561,22 @@ async function runEmailRegistrationTest(page = null, context = null) {
   if (!page || !context) {
     // Настройки браузера из конфигурации
     const browserOptions = {
-      headless: config.browser.headless,
-      slowMo: config.browser.slowMo,
-      timeout: config.browser.timeout
+      headless: getConfig().browser.headless,
+      slowMo: getConfig().browser.slowMo,
+      timeout: getConfig().browser.timeout,
+      devtools: getConfig().browser.devtools || false,
+      args: [
+        '--show-cursor',
+        '--force-cursor-visible',
+        '--enable-cursor-compositing',
+        '--disable-cursor-compositing=false',
+        '--enable-features=VaapiVideoDecoder'
+      ]
     };
 
     // Отключаем кэш если настроено
-    if (config.browser.disableCache) {
-      browserOptions.args = [
+    if (getConfig().browser.disableCache) {
+      browserOptions.args.push(
         '--disable-application-cache',
         '--disable-offline-load-stale-cache',
         '--disable-background-networking',
@@ -369,12 +586,16 @@ async function runEmailRegistrationTest(page = null, context = null) {
         '--disable-features=TranslateUI',
         '--disable-ipc-flooding-protection',
         '--aggressive-cache-discard'
-      ];
+      );
       console.log('🚫 Кэш браузера отключен');
     }
 
-    context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
-    page = context.pages()[0] || await context.newPage();
+    // Используем обычный launch для поддержки записи видео
+    const browser = await chromium.launch(browserOptions);
+    context = await browser.newContext({
+      viewport: { width: 1280, height: 720 }
+    });
+    page = await context.newPage();
     shouldCloseContext = true;
   }
 
@@ -403,14 +624,15 @@ async function runEmailRegistrationTest(page = null, context = null) {
 
   try {
     // Открываем страницу авторизации
-    await page.goto(config.baseUrl + '/auth');
-    console.log(`🌐 Открыт сайт: ${config.baseUrl}/auth`);
+    await page.goto(getConfig().baseUrl + '/auth');
+    console.log(`🌐 Открыт сайт: ${getConfig().baseUrl}/auth`);
 
     // Ждем загрузки страницы
     await page.waitForLoadState('networkidle');
     
+    
     // 1. Удаляем пользователя из базы данных
-    await deleteUserFromDB(config.testAccount.email);
+    await deleteUserFromDB(getConfig().testAccount.email);
     
     // 2. Принудительно выходим из системы (если залогинены)
     console.log('🚪 Принудительно выходим из системы в начале теста...');
@@ -426,19 +648,19 @@ async function runEmailRegistrationTest(page = null, context = null) {
     const passwordTests = [
       { password: '111', expectedError: 'Пароль должен содержать минимум 6 символов' },
       { password: '111111', expectedError: 'Пароль должен содержать хотя бы одну букву' },
-      { password: config.testAccount.password, expectedError: null } // Правильный пароль, должен пройти
+      { password: getConfig().testAccount.password, expectedError: null } // Правильный пароль, должен пройти
     ];
     
     let passwordTestsPassed = 0;
     for (const test of passwordTests) {
-      const passed = await testPasswordValidation(page, config.testAccount.email, test.password, test.expectedError);
+      const passed = await testPasswordValidation(page, getConfig().testAccount.email, test.password, test.expectedError);
       if (passed) passwordTestsPassed++;
     }
     
     console.log(`\n📊 Результаты валидации паролей: ${passwordTestsPassed}/${passwordTests.length} тестов пройдено`);
 
     // 5. Тестируем регистрацию через email
-    const result = await testEmailRegistration(page, config.testAccount.email, config.testAccount.password);
+    const result = await testEmailRegistration(page, getConfig().testAccount.email, getConfig().testAccount.password);
     
     // Выводим результат
     console.log('\n📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ:');

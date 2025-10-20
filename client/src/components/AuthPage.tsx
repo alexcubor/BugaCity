@@ -172,18 +172,17 @@ const AuthPage: React.FC = () => {
         newUrl.searchParams.delete('isNewUser');
         window.history.replaceState({}, '', newUrl.toString());
         
-        // Если это новый пользователь, показываем награду
+        // Если это новый пользователь через OAuth, сразу показываем награду (имя уже известно)
         if (isNewUser === 'true') {
           window.location.href = '/?reward=pioneer';
         } else {
-          window.location.reload();
+          window.location.href = '/';
         }
         return;
       }
       
-      if (userParam && rewardParam) {
-        openRewardModal(userParam, rewardParam);
-      } else if (showRewardModal) {
+      // Убираем дублирующий вызов openRewardModal - теперь он вызывается в loadUserData
+      if (showRewardModal && !userParam && !rewardParam) {
         setShowRewardModal(false);
         setRewardModalData(null);
       }
@@ -213,6 +212,7 @@ const AuthPage: React.FC = () => {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        
         
         // Проверяем, есть ли имя у пользователя
         if (!userData.name || userData.name.trim() === '') {
@@ -279,19 +279,15 @@ const AuthPage: React.FC = () => {
               const rewardResult = await rewardResponse.json();
               setUser((prev: any) => ({ ...prev, rewards: [...(prev.rewards || []), 'pioneer'] }));
             } else {
+              console.error('Ошибка добавления награды:', await rewardResponse.text());
             }
           } catch (error) {
+            console.error('Ошибка добавления награды:', error);
           }
         }
         
-        // Перезагружаем данные пользователя и перенаправляем на награду
-        await loadUserData();
-        
         // Перенаправляем на страницу с наградой Pioneer
-        const url = new URL(window.location.href);
-        url.searchParams.set('user', userId); // Используем ID пользователя
-        url.searchParams.set('reward', 'pioneer'); // Потом награда
-        window.history.pushState({}, '', url);
+        window.location.href = `/?user=${userId}&reward=pioneer`;
       } else {
         const errorText = await response.text();
         console.error('Ошибка обновления имени:', errorText);

@@ -27,7 +27,7 @@ const SupportButton: React.FC<SupportButtonProps> = ({ onClick }) => {
   const enableScrollProgressOnSmallScreen = () => {
     const btn = buttonRef.current;
     if (!btn) { 
-      console.log('No .button-item found'); 
+      // No .button-item found 
       return; 
     }
     

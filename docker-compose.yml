@@ -39,7 +39,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       DISABLE_RATE_LIMIT: 'true'
-      MONGODB_URI: mongodb://bugacity_user:bugacity_password@${MONGODB_HOST:-mongodb}:27017/bugacity?authSource=bugacity
+      # MONGODB_URI будет построен приложением из MONGODB_PASSWORD_FILE
+      MONGODB_HOST: mongodb
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: 7d
       # Включаем чтение пароля Mongo из Docker secret и подключение по DNS-имени сервиса
@@ -48,11 +49,8 @@ services:
       SMTP_PORT: 465
       SMTP_USER: hello@gluko.city
       SMTP_PASS_FILE: /run/secrets/smtp_password
-      VK_CLIENT_ID: 54075494
       VK_CLIENT_SECRET_FILE: /run/secrets/vk_secret
-      YANDEX_CLIENT_ID: 03e35996472d40e3b0d980943e545cb8
       YANDEX_CLIENT_SECRET_FILE: /run/secrets/yandex_secret
-      REACT_APP_API_URL: http://localhost:3001/api
     secrets:
       - jwt_secret
       - vk_secret
@@ -69,8 +67,12 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: bugacity-nginx
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
     ports:
       - "80:80"
       - "443:443"
@@ -89,7 +91,7 @@ volumes:
 
 networks:
   bugacity-network:
-    external: true
+    driver: overlay
 
 secrets:
   jwt_secret:

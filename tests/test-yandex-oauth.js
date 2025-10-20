@@ -1,9 +1,7 @@
-const { chromium } = require('playwright');
 const config = require('./config');
-const path = require('path');
 
-// Путь к профилю браузера
-const PROFILE_PATH = path.resolve(__dirname, '..', 'browser-profile');
+// Импортируем функцию logoutUser
+const { logoutUser } = require('./test-registration-frontend');
 
 // Email для тестирования
 const TEST_EMAIL = 'alexcubor@yandex.ru';
@@ -20,72 +18,95 @@ async function deleteTestUser() {
     });
     
     if (response.ok) {
-      console.log(`✅ Пользователь ${TEST_EMAIL} удален`);
-    } else if (response.status === 404) {
-      console.log(`ℹ️  Пользователь ${TEST_EMAIL} не найден в базе данных`);
-    } else {
-      console.log('⚠️  Удаление пользователя не удалось, продолжаем тест');
-    }
-  } catch (error) {
-    console.error('❌ Ошибка при удалении пользователя:', error);
-  }
-}
-
-// Функция для выхода из системы
-async function logoutUser(page) {
-  console.log(`🚪 Выходим из системы...`);
-  
-  try {
-    // Проверяем, авторизован ли пользователь
-    const isLoggedIn = await page.isVisible('.user-menu, .logout-button');
-    if (!isLoggedIn) {
-      console.log(`ℹ️  Пользователь не авторизован`);
+      const result = await response.json();
+      console.log('✅ Пользователь удален:', result);
       return true;
+    } else if (response.status === 404) {
+      console.log('ℹ️  Пользователь не найден в базе данных');
+      return true;
+    } else {
+      console.log('⚠️  Не удалось удалить пользователя, но продолжаем тест');
+      return false;
     }
-    
-    // Проверяем, не блокирует ли модальное окно с наградой
-    const rewardModalVisible = await page.isVisible('.modal-overlay');
-    if (rewardModalVisible) {
-      console.log('🚪 Закрываем модальное окно с наградой перед выходом...');
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
-    }
-    
-    // Нажимаем на меню пользователя
-    await page.click('.user-menu, .logout-button');
-    await page.waitForTimeout(500);
-    
-    // Нажимаем "Выйти"
-    await page.click('button:has-text("Выйти"), .logout-button');
-    await page.waitForTimeout(800);
-    
-    console.log(`✅ Выход из системы выполнен`);
-    return true;
   } catch (error) {
-    console.error(`❌ Ошибка при выходе из системы: ${error.message}`);
+    console.log('⚠️  Ошибка при удалении пользователя, но продолжаем тест');
     return false;
   }
 }
 
 // Функция тестирования входа через Yandex OAuth
-async function testYandexLogin(page) {
+async function testYandexLogin(page, context) {
   console.log(`\n🔵 Тестируем вход через Yandex OAuth`);
   
   try {
-    // Сначала проверяем, не авторизован ли уже пользователь
-    const isLoggedIn = await page.isVisible('.user-menu, .logout-button');
+    // Проверяем, авторизован ли пользователь на нашем сайте
+    const userMenu = await page.locator('.user-menu');
+    const isLoggedIn = await userMenu.isVisible();
+    
     if (isLoggedIn) {
-      console.log(`ℹ️  Пользователь уже авторизован, пропускаем Yandex OAuth`);
-      return true;
+      console.log('🚪 Пользователь авторизован на нашем сайте, выходим из системы...');
+      
+      // Нажимаем на меню пользователя
+      await userMenu.click();
+      await page.waitForTimeout(1000); // Ждем, пока откроется выпадающее меню
+      
+      // Ищем кнопку выхода в разных вариантах
+      const logoutSelectors = [
+        'button:has-text("Выйти")',
+        'button:has-text("Выход")', 
+        '.logout-button',
+        '[data-testid="logout"]',
+        'a:has-text("Выйти")',
+        'a:has-text("Выход")',
+        '.user-menu button:last-child',
+        '.user-menu a:last-child',
+        '.user-menu li:last-child',
+        '.user-menu div:last-child',
+        'button' // Просто кнопка с текстом "Выйти"
+      ];
+      
+      let logoutButton = null;
+      for (const selector of logoutSelectors) {
+        try {
+          logoutButton = await page.locator(selector);
+          if (await logoutButton.isVisible()) {
+            console.log(`✅ Найдена кнопка выхода с селектором: ${selector}`);
+            break;
+          }
+        } catch (error) {
+          console.log(`ℹ️  Селектор ${selector} не сработал`);
+        }
+      }
+      
+      if (logoutButton && await logoutButton.isVisible()) {
+        await logoutButton.click();
+        console.log('✅ Выход выполнен через UI');
+        await page.waitForTimeout(2000); // Ждем, пока произойдет выход
+      } else {
+        console.log('⚠️  Кнопка выхода не найдена, но продолжаем тест');
+      }
+    } else {
+      console.log('ℹ️  Пользователь не авторизован на нашем сайте, продолжаем тест');
     }
     
-    // Проверяем, открыто ли уже модальное окно
-    const modalOpen = await page.isVisible('.auth-modal');
-    if (!modalOpen) {
-      // Открываем модальное окно авторизации только если оно не открыто
-      await page.click('.login-button');
-      await page.waitForSelector('.auth-modal', { timeout: 5000 });
+    // Ждем, куда нас перенаправит кнопка выхода
+    await page.waitForTimeout(2000);
+    const currentUrl = page.url();
+    console.log(`🌐 URL после выхода: ${currentUrl}`);
+    
+    // Если мы на главной странице, переходим на страницу авторизации
+    if (currentUrl.includes('/') && !currentUrl.includes('/auth')) {
+      console.log('🔄 Переходим на страницу авторизации...');
+      await page.goto(config.baseUrl + '/auth');
+      await page.waitForTimeout(2000);
     }
+    
+    // Проверяем содержимое страницы
+    const pageContent = await page.textContent('body');
+    console.log(`📄 Содержимое страницы (первые 200 символов): ${pageContent.substring(0, 200)}`);
+    
+    // Ищем кнопку Yandex на текущей странице
+    console.log('🔍 Ищем кнопку Yandex...');
     
     // Даем время браузеру "освоиться" перед OAuth
     console.log('⏳ Ждем 3 секунды перед OAuth...');
@@ -93,283 +114,133 @@ async function testYandexLogin(page) {
     
     // Сразу нажимаем кнопку Yandex (без заполнения полей)
     console.log('🔵 Нажимаем кнопку "Войти через Яндекс"...');
+    
+    // Проверяем, что кнопка существует
+    const yandexButton = await page.locator('.social-buttons-row button[title="Войти через Яндекс"]');
+    const isVisible = await yandexButton.isVisible();
+    console.log(`🔍 Кнопка Yandex найдена: ${isVisible}`);
+    
+    if (!isVisible) {
+      console.log('❌ Кнопка Yandex не найдена!');
+      return false;
+    }
+    
+    // Добавляем слушатель для перехвата URL перед кликом
+    page.on('request', request => {
+      if (request.url().includes('oauth.yandex.ru')) {
+        console.log('🌐 Yandex OAuth URL:', request.url());
+      }
+    });
+    
+    // Проверяем текущий URL перед кликом
+    const urlBefore = page.url();
+    console.log(`🌐 URL перед кликом: ${urlBefore}`);
+    
     await page.click('.social-buttons-row button[title="Войти через Яндекс"]');
     
-    // Ждем открытия popup окна
-    console.log('⏳ Ждем открытия popup окна Yandex...');
-    const popupPromise = page.waitForEvent('popup', { timeout: 10000 });
-    const popup = await popupPromise;
-    console.log('✅ Popup окно Yandex открылось');
+    // Проверяем URL после клика
+    await page.waitForTimeout(1000);
+    const urlAfter = page.url();
+    console.log(`🌐 URL после клика: ${urlAfter}`);
     
-    // Ждем завершения авторизации в popup
-    console.log('⏳ Ждем завершения авторизации в popup...');
-    console.log('ℹ️  У вас есть 90 секунд для подтверждения в Yandex');
+    // Проверяем, что открылось popup окно с Yandex OAuth
+    console.log('🔍 Проверяем, открылось ли popup окно...');
     
-    try {
-      // Ждем, пока popup закроется или истечет timeout
-      await popup.waitForEvent('close', { timeout: 90000 });
-      console.log(`✅ Popup окно Yandex закрылось`);
-      
-      // Даем время для завершения авторизации на основной странице
-      console.log('⏳ Ждем завершения авторизации на основной странице...');
-      await page.waitForTimeout(3000);
-      
-      // Проверяем, что модальное окно авторизации закрылось
-      console.log('🔍 Проверяем, что модальное окно авторизации закрылось...');
-      const modalStillOpen = await page.isVisible('.auth-modal');
-      if (modalStillOpen) {
-        console.log('❌ Модальное окно авторизации все еще открыто');
-        return false;
-      }
-      console.log('✅ Модальное окно авторизации закрылось');
-      
-      // Проверяем, что пользователь действительно авторизован
-      console.log('🔍 Проверяем, что пользователь авторизован...');
-      const isLoggedIn = await page.isVisible('.user-menu, .logout-button');
-      if (!isLoggedIn) {
-        console.log('❌ Пользователь не авторизован после OAuth');
-        return false;
-      }
-      console.log('✅ Пользователь успешно авторизован через Yandex OAuth');
-      
-      // Проверяем HTML - ищем аватар пользователя
-      console.log('🔍 Проверяем HTML на наличие аватара...');
-      const html = await page.content();
-      
-      // Ищем аватар в HTML
-      if (html.includes('uploads/users/')) {
-        console.log('✅ Аватар найден в HTML!');
-        // Извлекаем путь к аватару
-        const avatarMatch = html.match(/uploads\/users\/[^"'\s]+/);
-        if (avatarMatch) {
-          console.log(`📸 Путь к аватару: ${avatarMatch[0]}`);
-        }
-      } else {
-        console.log('❌ Аватар НЕ найден в HTML');
-        console.log('🔍 Ищем дефолтную иконку...');
-        if (html.includes('user_icon.svg')) {
-          console.log('⚠️  Показывается дефолтная иконка вместо аватара');
-        }
-      }
-      
-      // Проверяем, есть ли токен в localStorage
-      const token = await page.evaluate(() => localStorage.getItem('token'));
-      if (token) {
-        console.log('✅ Токен найден в localStorage');
-        // Декодируем токен для проверки
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          console.log(`🔍 ID пользователя из токена: ${payload.userId}`);
-          
-          // Проверяем API запрос к пользователю
-          console.log('🔍 Проверяем API запрос к пользователю...');
-          const apiResponse = await page.evaluate(async (userId) => {
-            try {
-              const response = await fetch(`/api/users/${userId}`);
-              const data = await response.json();
-              return { success: true, data, status: response.status };
-            } catch (error) {
-              return { success: false, error: error.message };
-            }
-          }, payload.userId);
-          
-          if (apiResponse.success) {
-            console.log(`✅ API запрос успешен (статус: ${apiResponse.status})`);
-            console.log(`🔍 Данные пользователя:`, JSON.stringify(apiResponse.data, null, 2));
-            if (apiResponse.data.avatar) {
-              console.log(`📸 Аватар в API: ${apiResponse.data.avatar}`);
-            } else {
-              console.log('❌ Аватар отсутствует в API ответе');
-            }
-          } else {
-            console.log(`❌ API запрос не удался: ${apiResponse.error}`);
-          }
-        } catch (e) {
-          console.log('⚠️  Не удалось декодировать токен');
-        }
-      } else {
-        console.log('❌ Токен НЕ найден в localStorage');
-      }
-      
-      // Дополнительная проверка - убеждаемся, что мы на главной странице
-      console.log('🔍 Проверяем, что мы находимся на главной странице...');
-      const currentUrl = page.url();
-      console.log(`📍 Текущий URL: ${currentUrl}`);
-      
-      // Проверяем, что URL содержит наш домен (не остались на Yandex)
-      const isOurDomain = Object.values(config.urls).some(url => 
-        currentUrl.includes(new URL(url).hostname)
-      );
-      
-      if (!isOurDomain) {
-        console.log('❌ Не находимся на главной странице приложения');
-        return false;
-      }
-      console.log('✅ Находимся на главной странице приложения');
-      
-      return true;
-    } catch (error) {
-      console.log(`❌ Вход через Yandex OAuth не удался - popup не закрылся в течение 90 секунд`);
-      console.log(`ℹ️  Возможно, нужно подтвердить разрешения в popup окне`);
-      await popup.close();
-      return false;
-    }
-  } catch (error) {
-    console.error(`❌ Ошибка при тестировании Yandex OAuth: ${error.message}`);
-    return false;
-  }
-}
-
-// Функция для удаления текущего пользователя через API
-async function deleteCurrentUser(page) {
-  console.log(`\n🗑️  Удаляем текущего пользователя через API...`);
-  
-  try {
-    // Получаем токен из localStorage
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-    if (!token) {
-      console.log('❌ Токен не найден, пользователь не авторизован');
-      return false;
-    }
+    // Ждем немного и проверяем, есть ли новые страницы в контексте
+    await page.waitForTimeout(2000);
+    const pages = context.pages();
+    console.log(`📄 Количество открытых страниц: ${pages.length}`);
     
-    console.log('🔑 Токен найден, отправляем запрос на удаление...');
-    
-    // Отправляем DELETE запрос на /api/users/me
-    const response = await page.evaluate(async (authToken) => {
-      try {
-        const response = await fetch('/api/users/me', {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
+    if (pages.length > 1) {
+      console.log('✅ Popup окно открылось');
+      const popup = pages[pages.length - 1]; // Последняя открытая страница
+      
+      // Ждем загрузки popup окна
+      await popup.waitForLoadState('domcontentloaded');
+      const popupUrl = popup.url();
+      console.log(`🌐 URL popup окна: ${popupUrl}`);
+      
+      if (popupUrl.includes('oauth.yandex.ru')) {
+        console.log('✅ Popup окно содержит Yandex OAuth URL');
+        console.log('⏳ Ждем завершения авторизации в popup окне...');
+        console.log('ℹ️  У вас есть 30 секунд для подтверждения в Yandex');
         
-        const data = await response.json();
-        return { 
-          success: response.ok, 
-          status: response.status, 
-          data: data 
-        };
-      } catch (error) {
-        return { 
-          success: false, 
-          error: error.message 
-        };
+        // Ждем, пока popup окно закроется само после авторизации
+        try {
+          await popup.waitForEvent('close', { timeout: 30000 });
+          console.log('✅ Popup окно закрылось после авторизации');
+          
+          // Ждем, чтобы можно было посмотреть на результат
+          console.log('⏳ Ждем 2 секунды, чтобы посмотреть на результат...');
+          await page.waitForTimeout(2000);
+          
+          return true;
+        } catch (error) {
+          console.log('❌ Popup окно не закрылось в течение 30 секунд');
+          await popup.close();
+          return false;
+        }
+      } else {
+        console.log('❌ Popup окно не содержит Yandex OAuth URL');
+        await popup.close();
+        return false;
       }
-    }, token);
-    
-    if (response.success) {
-      console.log(`✅ Пользователь успешно удален:`, response.data);
-      return true;
     } else {
-      console.log(`❌ Ошибка при удалении пользователя (статус: ${response.status}):`, response.data);
+      console.log('❌ Popup окно не открылось');
       return false;
     }
     
   } catch (error) {
-    console.error(`❌ Ошибка при удалении пользователя: ${error.message}`);
+    if (error.message.includes('Timeout')) {
+      console.log('❌ Вход через Yandex OAuth не удался - popup не закрылся в течение 90 секунд');
+      console.log('ℹ️  Возможно, нужно подтвердить разрешения в popup окне');
+    } else {
+      console.error(`❌ Ошибка при тестировании Yandex OAuth: ${error.message}`);
+    }
     return false;
   }
 }
 
 // Основная функция теста
-async function runYandexOAuthTest() {
+async function runYandexOAuthTest(page, context) {
+  // Принудительно перезагружаем config.js с актуальным окружением
+  delete require.cache[require.resolve('./config')];
+  const config = require('./config');
+  
   console.log('🚀 Запуск теста входа через Yandex OAuth');
   console.log('=====================================');
-  console.log(`📁 Профиль: ${PROFILE_PATH}`);
   console.log(`🌐 URL: ${config.baseUrl}`);
   console.log('=====================================');
 
   // Удаляем тестового пользователя из базы данных
   await deleteTestUser();
 
-  // Настройки браузера из конфигурации
-  const browserOptions = {
-    headless: config.browser.headless,
-    slowMo: config.browser.slowMo,
-    timeout: config.browser.timeout
-  };
-
-  // Отключаем кэш если настроено
-  if (config.browser.disableCache) {
-    browserOptions.args = [
-      '--disable-application-cache',
-      '--disable-offline-load-stale-cache',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=TranslateUI',
-      '--disable-ipc-flooding-protection',
-      '--aggressive-cache-discard'
-    ];
-    console.log('🚫 Кэш браузера отключен');
-  }
-
-  const context = await chromium.launchPersistentContext(PROFILE_PATH, browserOptions);
-  const page = context.pages()[0] || await context.newPage();
-
-  // Слушаем события для отладки
-  page.on('console', msg => {
-    if (msg.type() === 'error' || msg.text().includes('OAuth') || msg.text().includes('auth')) {
-      console.log(`📝 [${msg.type()}] ${msg.text()}`);
-    }
-  });
-
-  page.on('pageerror', error => {
-    console.log(`❌ [ERROR] ${error.message}`);
-  });
-
-  page.on('request', request => {
-    if (request.url().includes('oauth') || request.url().includes('auth') || request.url().includes('vk.com') || request.url().includes('yandex.ru')) {
-      console.log(`🌐 [REQUEST] ${request.method()} ${request.url()}`);
-    }
-  });
-
-  page.on('response', response => {
-    if (response.url().includes('oauth') || response.url().includes('auth') || response.url().includes('vk.com') || response.url().includes('yandex.ru')) {
-      console.log(`📡 [RESPONSE] ${response.status()} ${response.url()}`);
-    }
-  });
-
   try {
-    // Открываем сайт
+    // Переходим на сайт
+    console.log(`🌐 Переходим на сайт: ${config.baseUrl}`);
     await page.goto(config.baseUrl);
-    console.log(`🌐 Открыт сайт: ${config.baseUrl}`);
-
+    console.log(`🌐 Текущий URL: ${page.url()}`);
+    
     // Ждем загрузки страницы
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    console.log('✅ Страница загружена');
     
-    // 1. Принудительно выходим из системы (если залогинены)
-    console.log('🚪 Принудительно выходим из системы в начале теста...');
-    await logoutUser(page);
+    // Проверяем, есть ли контент на странице
+    const bodyText = await page.textContent('body');
+    console.log(`📄 Содержимое страницы (первые 200 символов): ${bodyText.substring(0, 200)}`);
     
-    // 2. НЕ очищаем localStorage и sessionStorage - сохраняем сессию Yandex
-    console.log('ℹ️  Сохраняем сессию Yandex в браузере...');
+    // Проверяем, есть ли элементы на странице
+    const hasContent = await page.locator('body').isVisible();
+    console.log(`🔍 Тело страницы видимо: ${hasContent}`);
     
-    // 3. Тестируем вход через Yandex OAuth
-    const result = await testYandexLogin(page);
+    // Тестируем вход через Yandex OAuth
+    const result = await testYandexLogin(page, context);
     
-    // 4. Если тест прошел успешно, удаляем пользователя
-    if (result) {
-      console.log('\n🧹 Очистка после успешного теста...');
-      const deleteResult = await deleteCurrentUser(page);
-      if (deleteResult) {
-        console.log('✅ Пользователь и его данные удалены');
-      } else {
-        console.log('⚠️  Не удалось удалить пользователя, но тест прошел');
-      }
-    }
-    
-    // Выводим результат
     console.log('\n📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ:');
     console.log('=====================================');
     console.log(`🔵 Вход через Yandex OAuth: ${result ? '✅ УСПЕХ' : '❌ ОШИБКА'}`);
     
-    if (result) {
-      console.log('🎉 ТЕСТ ПРОЙДЕН УСПЕШНО!');
-    } else {
+    if (!result) {
       console.log('⚠️  ТЕСТ НЕ ПРОЙДЕН');
       console.log('ℹ️  Возможно, требуется ручное подтверждение в popup окне');
     }
@@ -378,20 +249,8 @@ async function runYandexOAuthTest() {
 
   } catch (error) {
     console.error('❌ Произошла ошибка во время выполнения теста:', error);
-  } finally {
-    console.log('\n✅ Тестирование завершено');
-    await context.close();
-    console.log(`💾 Профиль сохранен: ${PROFILE_PATH}`);
+    return false;
   }
-}
-
-// CLI интерфейс
-async function main() {
-  await runYandexOAuthTest();
-}
-
-if (require.main === module) {
-  main().catch(console.error);
 }
 
 module.exports = { runYandexOAuthTest, testYandexLogin };

@@ -21,7 +21,7 @@ class EmailService {
       port: parseInt(process.env.SMTP_PORT || '465'),
       secure: true, // Для порта 465 используем SSL
       auth: {
-        user: process.env.SMTP_USER,
+        user: 'hello@gluko.city',
         pass: smtpPassword
       }
     });

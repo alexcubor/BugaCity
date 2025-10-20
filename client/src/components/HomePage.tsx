@@ -2,7 +2,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import UserMenu from './UserMenu';
 import NameInputModal from './NameInputModal';
 import RewardViewer from './RewardViewer/RewardViewer';
-import MapboxMap from './MapboxMap';
+import { Map } from './Map';
+import FriendsList from './FriendsList';
 import { tryNativeShare, copyToClipboard, ShareData } from '../utils/shareUtils';
 
 const HomePage: React.FC = () => {
@@ -95,6 +96,61 @@ const HomePage: React.FC = () => {
 
   }, []);
 
+  // Heartbeat: помечаем себя онлайн, стараясь отправить координаты (быстрая гео)
+  useEffect(() => {
+    let interval: any;
+    const sendHeartbeat = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        // Пытаемся быстро получить гео с коротким таймаутом
+        const getQuickGeo = () => new Promise<{ coordinates?: [number, number], accuracy?: number }>((resolve) => {
+          if (!navigator.geolocation) return resolve({});
+          let settled = false;
+          const timeout = setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              resolve({});
+            }
+          }, 1500);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+              const { longitude, latitude, accuracy } = pos.coords;
+              resolve({ coordinates: [longitude, latitude], accuracy });
+            },
+            () => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+              resolve({});
+            },
+            { enableHighAccuracy: false, timeout: 1000, maximumAge: 30000 }
+          );
+        });
+
+        const geo = await getQuickGeo();
+        await fetch('/api/users/me/heartbeat', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(geo)
+        });
+      } catch (e) {
+        // тихо игнорируем
+      }
+    };
+    if (isLoggedIn) {
+      sendHeartbeat();
+      interval = setInterval(sendHeartbeat, 60000); // раз в минуту
+    }
+    return () => interval && clearInterval(interval);
+  }, [isLoggedIn]);
+
   // Загружаем данные наград
   const loadRewardsData = async () => {
     try {
@@ -186,7 +242,7 @@ const HomePage: React.FC = () => {
         newUrl.searchParams.delete('isNewUser');
         window.history.replaceState({}, '', newUrl.toString());
         
-        // Если это новый пользователь, показываем награду
+        // Если это новый пользователь через OAuth, сразу показываем награду (имя уже известно)
         if (isNewUser === 'true') {
           window.location.href = '/?reward=pioneer';
         } else {
@@ -195,9 +251,7 @@ const HomePage: React.FC = () => {
         return;
       }
       
-      if (userParam && rewardParam) {
-        openRewardModal(userParam, rewardParam);
-      } else if (showRewardModal) {
+      if (showRewardModal && !userParam && !rewardParam) {
         setShowRewardModal(false);
         setRewardModalData(null);
       }
@@ -228,6 +282,24 @@ const HomePage: React.FC = () => {
         const userData = await response.json();
         setUser(userData);
         
+        // Проверяем, есть ли параметр reward в URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const rewardParam = urlParams.get('reward');
+        const userParam = urlParams.get('user');
+        
+        // Если в URL есть параметр reward, показываем награду после загрузки данных пользователя
+        if (rewardParam) {
+          
+          // Показываем награду с данными пользователя из загруженных данных
+          setRewardModalData({
+            rewardId: rewardParam,
+            userName: userData.name || '',
+            userId: userData.id || userParam
+          });
+          setShowRewardModal(true);
+          return;
+        }
+        
         // Проверяем, есть ли имя у пользователя
         if (!userData.name || userData.name.trim() === '') {
           setShowNameModal(true);
@@ -237,6 +309,17 @@ const HomePage: React.FC = () => {
           } else {
           }
         }
+      } else if (response.status === 404) {
+        // Пользователь не найден - токен недействителен
+        // Пользователь не найден, перенаправляем на авторизацию
+        localStorage.removeItem('token');
+        window.location.href = '/auth';
+        return;
+      } else {
+        console.error('❌ Ошибка загрузки пользователя:', response.status);
+        localStorage.removeItem('token');
+        window.location.href = '/auth';
+        return;
       }
     } catch (error) {
       console.error('Ошибка загрузки данных пользователя:', error);
@@ -298,14 +381,8 @@ const HomePage: React.FC = () => {
           }
         }
         
-        // Перезагружаем данные пользователя и перенаправляем на награду
-        await loadUserData();
-        
         // Перенаправляем на страницу с наградой Pioneer
-        const url = new URL(window.location.href);
-        url.searchParams.set('user', userId); // Используем ID пользователя
-        url.searchParams.set('reward', 'pioneer'); // Потом награда
-        window.history.pushState({}, '', url);
+        window.location.href = `/?user=${userId}&reward=pioneer`;
       } else {
         const errorText = await response.text();
         console.error('Ошибка обновления имени:', errorText);
@@ -351,17 +428,11 @@ const HomePage: React.FC = () => {
   };
 
   const handleGetRewardClick = () => {
-    console.log('🔘 Кнопка "Получить такую же!" нажата');
-    console.log('🔐 isLoggedIn:', isLoggedIn);
-    
     // Если пользователь не авторизован, перенаправляем на страницу авторизации
     if (!isLoggedIn) {
-      console.log('🚀 Перенаправляем на страницу авторизации');
       window.location.href = '/auth';
       return;
     }
-    
-    console.log('✅ Пользователь авторизован, открываем модальное окно');
     // Если авторизован, открываем модальное окно награды
     setRewardModalData({
       rewardId: 'pioneer',
@@ -390,13 +461,18 @@ const HomePage: React.FC = () => {
 
 
   return (
-    <>
+    <div style={{
+      position: 'relative',
+      width: '100vw',
+      height: '100vh',
+      overflow: 'hidden'
+    }}>
       {/* Логотип в верхнем левом углу */}
       <div style={{
         position: 'absolute',
         top: '20px',
         left: '20px',
-        zIndex: 10,
+        zIndex: 1000,
         width: '64px',
         height: '64px'
       }}>
@@ -411,7 +487,7 @@ const HomePage: React.FC = () => {
         />
       </div>
 
-      {/* UserMenu без header */}
+      {/* UserMenu в правом верхнем углу */}
       <UserMenu 
         onLogout={handleLogout} 
         onRewardClick={handleRewardClick} 
@@ -420,12 +496,16 @@ const HomePage: React.FC = () => {
       />
 
       {/* Карта Mapbox на весь экран */}
-      <MapboxMap 
-        style={{ 
-          width: '100vw', 
-          height: '100vh' 
-        }}
+      <Map
         isUserLoggedIn={isLoggedIn}
+        user={user}
+        onUserClick={() => {
+          // Открываем UserMenu при клике на пользователя на карте
+          const userMenuButton = document.querySelector('.user-menu-icon') as HTMLButtonElement;
+          if (userMenuButton) {
+            userMenuButton.click();
+          }
+        }}
       />
       
       {/* Модальное окно для ввода имени */}
@@ -469,7 +549,13 @@ const HomePage: React.FC = () => {
                  </Suspense>
                  </>
                )}
-    </>
+
+               {/* Список друзей внизу экрана */}
+               <FriendsList 
+                 isUserLoggedIn={isLoggedIn}
+                 userId={user?.id}
+               />
+    </div>
   );
 };
 
