@@ -2,8 +2,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { chromium } = require('playwright');
 
-// Импортируем конфигурацию
-const config = require('./config');
+// Конфигурация будет загружена динамически в каждой функции
 
 // Импортируем функции тестов с обработкой ошибок
 let runBackendTest, runEmailRegistrationTest, runYandexOAuthTest, runVKOAuthTest;
@@ -181,6 +180,8 @@ async function runAllTests(environment = 'local') {
     } else {
       try {
         // Для OAuth тестов используем URL из конфигурации
+        delete require.cache[require.resolve('./config')];
+        const config = require('./config');
         console.log(`🌐 Используем URL для OAuth: ${config.baseUrl}`);
         
         const yandexResult = await runYandexOAuthTest(page, context);

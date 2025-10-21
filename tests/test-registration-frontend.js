@@ -5,6 +5,8 @@ const { simpleParser } = require('mailparser');
 
 // Загружаем config динамически
 function getConfig() {
+  // Принудительно перезагружаем конфигурацию
+  delete require.cache[require.resolve('./config')];
   return require('./config');
 }
 

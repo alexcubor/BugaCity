@@ -252,14 +252,25 @@ async function checkUserExists(email) {
   console.log(`🔍 Проверяем существование пользователя: ${email}`);
   
   try {
+    console.log(`🌐 Отправляем запрос на: ${API_BASE_URL}/api/auth/check-email`);
     const response = await axios.post(`${API_BASE_URL}/api/auth/check-email`, {
       email: email
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 10000
     });
     
     console.log(`📊 Результат проверки:`, response.data);
     return response.data.exists;
   } catch (error) {
-    console.error(`❌ Ошибка при проверке пользователя:`, error.response?.data || error.message);
+    console.error(`❌ Ошибка при проверке пользователя:`);
+    console.error(`   Status: ${error.response?.status}`);
+    console.error(`   Status Text: ${error.response?.statusText}`);
+    console.error(`   Data: ${JSON.stringify(error.response?.data)}`);
+    console.error(`   Message: ${error.message}`);
     return false;
   }
 }
@@ -317,7 +328,7 @@ async function runBackendTest(environment = 'local') {
   
   // Обновляем конфигурацию с правильным окружением
   const config = require('./config');
-  const API_BASE_URL = config.urls[environment] || config.baseUrl;
+  const API_BASE_URL = config.baseUrl;
   
   // Обновляем глобальную переменную для функций
   global.API_BASE_URL = API_BASE_URL;

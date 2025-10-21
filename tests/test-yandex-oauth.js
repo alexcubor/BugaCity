@@ -208,6 +208,8 @@ async function runYandexOAuthTest(page, context) {
   const config = require('./config');
   
   console.log('🚀 Запуск теста входа через Yandex OAuth');
+  console.log(`🌐 Environment: ${process.env.TEST_ENVIRONMENT}`);
+  console.log(`🌐 Base URL: ${config.baseUrl}`);
   console.log('=====================================');
   console.log(`🌐 URL: ${config.baseUrl}`);
   console.log('=====================================');
