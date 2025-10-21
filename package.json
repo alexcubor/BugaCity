@@ -17,10 +17,12 @@
     "docker:dev": "docker system prune -f && docker build -t bugacity:latest . && NODE_ENV=development APP_PORT=3001 MONGODB_PORT=27017 MONGODB_HOST=mongodb docker stack deploy -c docker-compose.yml bugacity",
     "docker:prod": "docker system prune -f && docker build -t bugacity:latest . && NODE_ENV=production docker stack deploy -c docker-compose.yml bugacity",
     "docker:restart:dev": "npm run swarm:rm && sleep 5 && docker system prune -f && docker build -t bugacity:latest . && NODE_ENV=development APP_PORT=3001 MONGODB_PORT=27017 MONGODB_HOST=mongodb docker stack deploy -c docker-compose.yml bugacity",
-    "docker:restart:prod": "if [ \"$CONFIRM_DELETE\" != \"yes\" ]; then echo '❌ Для перезапуска продакшн установите CONFIRM_DELETE=yes'; exit 1; fi && npm run swarm:rm && sleep 5 && docker system prune -f && NODE_ENV=production docker stack deploy -c docker-compose.yml bugacity",
+    "docker:restart:prod": "npm run swarm:rm && sleep 5 && docker system prune -f && NODE_ENV=production docker stack deploy -c docker-compose.yml bugacity",
     "test": "node tests/run-test.js",
     "test:help": "node tests/run-test.js --help",
-    "backup": "node scripts/backup.js"
+    "backup": "node scripts/backup.js",
+    "maintenance:on": "cp nginx.conf.maintenance nginx.conf && docker service update --env-add MAINTENANCE_MODE=true bugacity_nginx && echo '✅ Режим обслуживания включен'",
+    "maintenance:off": "git checkout nginx.conf && docker service update --env-rm MAINTENANCE_MODE bugacity_nginx && echo '✅ Обычный режим работы включен'"
   },
   "dependencies": {
     "@turf/turf": "^7.2.0",

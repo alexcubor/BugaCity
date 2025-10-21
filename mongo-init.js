@@ -18,13 +18,13 @@ db = db.getSiblingDB('bugacity');
 print('📁 Switched to bugacity database');
 
 // Проверяем, существует ли пользователь
-const existingUser = db.getUser('bugacity_admin');
+const existingUser = db.getUser('bugacity_user');
 if (existingUser) {
-  print('👤 User bugacity_admin already exists, skipping creation');
+  print('👤 User bugacity_user already exists, skipping creation');
 } else {
   // Создаем пользователя для приложения
   db.createUser({
-    user: 'bugacity_admin',
+    user: 'bugacity_user',
     pwd: mongodbPassword,
     roles: [
       {
@@ -33,7 +33,7 @@ if (existingUser) {
       }
     ]
   });
-  print('✅ User bugacity_admin created successfully');
+  print('✅ User bugacity_user created successfully');
 }
 
 // Создаем коллекции

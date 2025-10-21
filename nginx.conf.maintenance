@@ -1,0 +1,119 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # Основные настройки
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+
+    # Gzip сжатие
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # Upstream для приложения (отключен)
+    # upstream app {
+    #     server bugacity_app:3001;
+    # }
+
+    # HTTP сервер
+    server {
+        listen 80;
+        server_name gluko.city;
+
+        # Страница "Ведутся работы" для всех запросов
+        location / {
+            return 200 '<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ведутся работы - Глюкоград</title>
+    <style>
+        :root {
+            --bg: #0a0a0b;
+            --text: #fbe7e77a;
+            --surface: rgba(18, 18, 18, 0.6);
+            --border: rgba(55, 55, 55, 0.1);
+            --accent: #ffb74a54;
+        }
+        * {
+            font-family: "Golos", sans-serif;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "Golos", sans-serif;
+        }
+        .container {
+            background: var(--surface);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            padding: 60px 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 500px;
+            gap: 40px;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+        p {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: var(--text);
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .logo {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Глюкоград</div>
+        <h1>Ведутся работы</h1>
+        <div class="spinner"></div>
+        <p>Мы обновляемся</p>
+    </div>
+</body>
+</html>';
+            add_header Content-Type text/html;
+        }
+
+        # Логи
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+    }
+
+
+}

@@ -205,7 +205,7 @@ if (!mongoUri) {
     isDevelopment, 
     mongoHost 
   });
-  mongoUri = `mongodb://bugacity_admin:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
+  mongoUri = `mongodb://bugacity_user:${mongodbPassword}@${mongoHost}:27017/bugacity?authSource=bugacity`;
 }
 
 console.info('Connecting to MongoDB', { uri: mongoUri.replace(/\/\/.*@/, '//***:***@') });

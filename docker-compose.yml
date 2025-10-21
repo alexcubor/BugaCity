@@ -20,7 +20,7 @@ services:
       - mongo_prod_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
-      - bugacity-network
+      - network
     ports:
       - "${MONGODB_PORT:-}:27017"  # Проброс порта только в dev режиме
 
@@ -60,7 +60,7 @@ services:
     depends_on:
       - mongodb
     networks:
-      - bugacity-network
+      - network
     volumes:
       - uploads_data:/app/uploads
 
@@ -76,12 +76,15 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - MAINTENANCE_MODE=${MAINTENANCE_MODE:-false}
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./maintenance.html:/usr/share/nginx/html/maintenance.html:ro
     depends_on:
       - app
     networks:
-      - bugacity-network
+      - network
 
 volumes:
   mongo_prod_data:
@@ -90,7 +93,7 @@ volumes:
   uploads_data:
 
 networks:
-  bugacity-network:
+  network:
     driver: overlay
 
 secrets:
