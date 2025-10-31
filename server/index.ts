@@ -56,7 +56,6 @@ const allowedOrigins = [
   'https://bugacity-npm.ru.tuna.am',
   'https://bugacity-docker.ru.tuna.am', 
   'https://gluko.city',
-  'http://gluko.city',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:8080'
