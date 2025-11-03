@@ -37,9 +37,32 @@ try {
   const mongoBackupDir = path.join(backupDir, 'mongodb');
   fs.mkdirSync(mongoBackupDir, { recursive: true });
   
+  // Получаем ID контейнера MongoDB
+  const mongoContainerId = execSync('docker ps -q -f name=bugacity_mongodb', { encoding: 'utf8' }).trim();
+  if (!mongoContainerId) {
+    throw new Error('MongoDB контейнер не найден');
+  }
+  
+  // Читаем пароль из секрета внутри контейнера приложения (где есть доступ к secrets)
+  // Или используем docker exec для чтения секрета из контейнера app
+  let mongodbPassword;
+  try {
+    const appContainerId = execSync('docker ps -q -f name=bugacity_app', { encoding: 'utf8' }).trim();
+    if (appContainerId) {
+      mongodbPassword = execSync(`docker exec ${appContainerId} cat /run/secrets/mongodb_password`, { encoding: 'utf8' }).trim();
+    } else {
+      throw new Error('App контейнер не найден для чтения секрета');
+    }
+  } catch (e) {
+    // Fallback: используем переменную окружения или дефолтный пароль
+    mongodbPassword = process.env.MONGODB_PASSWORD || 'bugacity_password';
+    console.log('⚠️  Используется пароль из переменной окружения или дефолтный');
+  }
+  
   // Команда для бэкапа MongoDB с аутентификацией
-  const mongoBackupCmd = `docker exec $(docker ps -q -f name=mongodb) mongodump --host localhost:27017 --db bugacity --username bugacity_admin --password ${process.env.MONGODB_PASSWORD} --authenticationDatabase bugacity --out /tmp/backup`;
-  const mongoCopyCmd = `docker cp $(docker ps -q -f name=mongodb):/tmp/backup/bugacity ${mongoBackupDir}/`;
+  // Используем правильный username: bugacity_user (не bugacity_admin)
+  const mongoBackupCmd = `docker exec ${mongoContainerId} mongodump --host localhost:27017 --db bugacity --username bugacity_user --password ${mongodbPassword} --authenticationDatabase bugacity --out /tmp/backup`;
+  const mongoCopyCmd = `docker cp ${mongoContainerId}:/tmp/backup/bugacity ${mongoBackupDir}/`;
   
   execSync(mongoBackupCmd, { stdio: 'inherit' });
   execSync(mongoCopyCmd, { stdio: 'inherit' });

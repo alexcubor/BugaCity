@@ -80,7 +80,6 @@ services:
       - MAINTENANCE_MODE=${MAINTENANCE_MODE:-false}
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./maintenance.html:/usr/share/nginx/html/maintenance.html:ro
     depends_on:
       - app
     networks:
