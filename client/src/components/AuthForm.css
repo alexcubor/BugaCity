@@ -1,11 +1,12 @@
 /* Используем стили из AuthModal.css, но адаптируем для отображения по центру страницы */
 .auth-form-container {
   position: absolute;
-  top: 50vh;
+  top: 200px;
+  width: min(350px, calc(100vw - 30px));
+  margin: 24px auto;
   left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 280px;
-  width: 40%;
+  transform: translateX(-50%);
+  box-sizing: border-box;
 }
 
 /* Убираем кнопку закрытия, так как это не модальное окно */

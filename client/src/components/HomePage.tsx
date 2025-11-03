@@ -520,14 +520,6 @@ const HomePage: React.FC = () => {
                {/* Модальное окно для награды из URL */}
                {showRewardModal && rewardModalData && (
                  <>
-                   <Suspense fallback={<div style={{ 
-                     display: 'flex', 
-                     justifyContent: 'center', 
-                     alignItems: 'center', 
-                     height: '400px',
-                     fontSize: '16px',
-                     color: '#666'
-                   }}>Загрузка 3D модели...</div>}>
                    <RewardViewer
                      rewardId={rewardModalData.rewardId}
                      size="large"
@@ -546,7 +538,6 @@ const HomePage: React.FC = () => {
                      onLoad={() => {}}
                      onError={(error: string) => console.error(`Ошибка загрузки ${rewardModalData.rewardId}:`, error)}
                    />
-                 </Suspense>
                  </>
                )}
 

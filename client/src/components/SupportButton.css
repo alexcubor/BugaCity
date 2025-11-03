@@ -62,22 +62,22 @@
 
 .support-project-diagonal .support-word {
   font-size: 46px;
-  transform: translateY(calc(-80px * var(--hover-progress, 0))) rotate(calc(-30deg * var(--hover-progress, 0))) scale(calc(1 - 0.05 * var(--hover-progress, 0)));
+  transform: translateY(calc(-80px * var(--hover-progress, 0))) rotate(calc(-20deg * var(--hover-progress, 0))) scale(calc(1 - 0.05 * var(--hover-progress, 0)));
 }
 
 .support-project-diagonal .project-word {
   font-size: 80px;
-  transform: translateY(calc(20px * var(--hover-progress, 0))) rotate(calc(-30deg * var(--hover-progress, 0))) scale(calc(1 + 0.05 * var(--hover-progress, 0)));
+  transform: translateY(calc(20px * var(--hover-progress, 0))) rotate(calc(-20deg * var(--hover-progress, 0))) scale(calc(1 + 0.05 * var(--hover-progress, 0)));
 }
 
 .button-item:hover .support-project-diagonal .support-word,
 .button-item.auto-hover .support-project-diagonal .support-word {
-  transform: translate(0px, -80px) rotate(-30deg) scale(0.95);
+  transform: translate(0px, -80px) rotate(-20deg) scale(0.95);
 }
 
 .button-item:hover .support-project-diagonal .project-word,
 .button-item.auto-hover .support-project-diagonal .project-word {
-  transform: translate(0px, 20px) rotate(-30deg) scale(1.05);
+  transform: translate(0px, 20px) rotate(-20deg) scale(1.05);
 }
 
 /* Модальное окно поддержки */

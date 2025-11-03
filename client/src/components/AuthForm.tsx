@@ -441,8 +441,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="auth-form-container">
-      <div className="container">
+    <div className="auth-form-container container">
         <h1 style={{textAlign: 'center'}}>{isLogin ? 'Вход' : 'Регистрация'}</h1>
         
         <form onSubmit={handleSubmit}>
@@ -752,7 +751,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
             onError={handleSocialError}
             />
         </div>
-      </div>
     </div>
   );
 };

@@ -20,6 +20,9 @@ const AuthPage: React.FC = () => {
   const [rewardsData, setRewardsData] = useState<any[]>([]);
   
   const [showNotification, setShowNotification] = useState(false);
+  const [showInvestorModal, setShowInvestorModal] = useState(false);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+  
 
   useEffect(() => {
     // Проверяем, есть ли токен в localStorage
@@ -79,6 +82,17 @@ const AuthPage: React.FC = () => {
       }
     }
 
+  }, []);
+
+  // Плавно скрываем стрелку при прокрутке вниз
+  useEffect(() => {
+    const onScroll = () => {
+      const atTop = window.scrollY < 40;
+      setShowScrollIndicator(atTop);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // Загружаем данные наград
@@ -356,20 +370,65 @@ const AuthPage: React.FC = () => {
         maxOffset={200}
         sensitivity={1.2}
       >
+        <div className="auth-hero">
         {/* Форма авторизации по центру изображения */}
         <AuthForm onAuthSuccess={handleAuthSuccess} />
+          <button
+            className={`scroll-indicator ${showScrollIndicator ? '' : 'hidden'}`}
+            onClick={() => {
+              const el = document.getElementById('info-section');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+            aria-label="Прокрутите вниз к описанию"
+          >
+            <span className="scroll-indicator-text">Прокрути вниз</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </ParallaxImage>
       
-      <div>
+      {showInvestorModal && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setShowInvestorModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>По вопросам инвестирования свяжитесь с автором проекта</h3>
+            <p style={{ marginTop: 8, marginBottom: 14 }}>в Телеграме:</p>
+            <a className="tg-button" href="https://t.me/alexcubor" target="_blank" rel="noreferrer noopener">@alexcubor</a>
+            <button className="modal-close" onClick={() => setShowInvestorModal(false)}>Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      <div id="info-section" className="info-section">
         <header className="header">
           <div className="logo-container">
             <img 
-              src="/images/glukograd_logo.png" 
+              src="/images/discover-city_logo.webp" 
               alt="Глюкоград логотип"
               className="logo"
             />
+            <div className="logo-subtext">Проект социальной сети Глюкоград</div>
+            <div className="logo-tagline">Игра, построенная вокруг реального мира.</div>
+            <div className="pilot-badge">Пилотный запуск планируется<br/>не позже 1 мая 2026 года</div>
+            <button
+              className="investor-slot-portrait"
+              onClick={() => setShowInvestorModal(true)}
+              aria-label="Я инвестор"
+            >
+              Я инвестор
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <button
+              className="investor-slot"
+              onClick={() => setShowInvestorModal(true)}
+              aria-label="Я инвестор"
+            >
+              Я инвестор
+            </button>
             {/* Кнопка "Назад" убрана - авторизованные пользователи перенаправляются автоматически */}
             {isLoggedIn && <UserMenu onLogout={handleLogout} />}
           </div>
@@ -379,19 +438,14 @@ const AuthPage: React.FC = () => {
           margin: '0 20%'
         }}>
           <div>
-            <h1>Что это?</h1>
+            <h1>Об игре</h1>
             <div>
               <p>
-                <strong>Глюкоград</strong> — это цифровое отражение твоего города. 
-                Здесь двор становится игровым уровнем, а уличные глюки новыми ориентирами 
-                для поиска редких артефактов. В Глюкограде можно найти постоянные объекты 
-                творчества, которые оставляют друзья, а за свою активность получить статус 
-                архитектора, мэра, а так же заработать награды, которые стоят целые глюкоины!
-              </p>
-              <p>
-                Мир Глюкограда только зарождается, и ты можешь ускорить его развитие, 
-                питая его поддержкой и бустами. Стань пионером в его исследовании, 
-                следи за новостями и знаками.
+                Социальная мобильная игра <strong>Открывай города</strong> — место, где игроки 
+                становятся искателями драгоценных исторических артефактов, доступных только в 
+                определенных местах разных городов мира. В каждом народе существуют свои сказочные 
+                герои, которые расскажут об особенностях местности. Они могут стать для игрока 
+                ценными проводниками и помочь быстрее и интереснее проходить игру.
               </p>
             </div>
           </div>
@@ -415,14 +469,6 @@ const AuthPage: React.FC = () => {
 
                {/* Модальное окно для награды из URL */}
                {showRewardModal && rewardModalData && (
-                 <Suspense fallback={<div style={{ 
-                   display: 'flex', 
-                   justifyContent: 'center', 
-                   alignItems: 'center', 
-                   height: '400px',
-                   fontSize: '16px',
-                   color: '#666'
-                 }}>Загрузка 3D модели...</div>}>
                    <RewardViewer
                      rewardId={rewardModalData.rewardId}
                      size="large"
@@ -441,7 +487,6 @@ const AuthPage: React.FC = () => {
                      onLoad={() => {}}
                      onError={(error: string) => console.error(`Ошибка загрузки ${rewardModalData.rewardId}:`, error)}
                    />
-                 </Suspense>
                )}
     </div>
   );

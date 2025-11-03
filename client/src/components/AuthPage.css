@@ -6,7 +6,7 @@
   right: 0 !important;
   width: 100% !important;
   min-width: 100vw !important;
-  z-index: 1000 !important;
+  z-index: 15;
   padding: 20px !important;
   align-items: center !important;
   box-sizing: border-box !important;
@@ -17,16 +17,191 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-direction: column;
 }
 
 .logo {
-  height: 90px;
+  height: 100px;
   width: auto;
+}
+
+.logo-tagline {
+  margin-top: 8px;
+  font-size: larger;
+  line-height: 1.3;
+  text-align: center;
+  font-weight: bold;
+  color: #ffffffd9;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.logo-subtext {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+  opacity: 0.9;
+  color: #ffffffd9;
+  text-shadow: 0 0 9px rgb(0, 0, 0);
 }
 
 @media (orientation: portrait) {
   .logo {
     height: 60px;
   }
+
+  /* В портретном режиме плашка в нормальном потоке в header под текстом */
+  .pilot-badge {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    margin-top: 8px;
+    width: auto;
+    text-align: center !important;
+  }
+
+  /* Скрываем оригинальную кнопку инвестора в правом углу */
+  .investor-slot {
+    display: none !important;
+  }
+
+  /* Показываем кнопку инвестора в потоке под плашкой */
+  .investor-slot-portrait {
+    display: block !important;
+    position: static !important;
+    margin-top: 8px;
+    background: #802424;
+    border: none;
+    color: #ffffffd9;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    text-align: center;
+    width: auto;
+  }
+
+  .auth-form-container {
+    top: 300px !important;
+  }
+
+  .info-section {
+    padding-top: 100px !important;
+  }
 }
 
+/* Хиро-контейнер для формы и стрелки */
+.auth-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Плашка пилотного запуска - в альбомном режиме в левом верхнем углу экрана */
+.pilot-badge {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  font-size: 12px;
+  line-height: 1.2;
+  backdrop-filter: blur(2px);
+  z-index: 20;
+  text-align: left;
+}
+
+/* Слот меню для инвесторов (верхний правый угол) - альбомный режим */
+.investor-slot {
+  position: fixed;
+  width: auto;
+  top: 30px;
+  right: 30px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #ffffffbd;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 20;
+}
+
+/* Кнопка инвестора для портретного режима (скрыта по умолчанию) */
+.investor-slot-portrait {
+  display: none;
+}
+
+/* Индикатор прокрутки под формой авторизации */
+.scroll-indicator {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.0);
+  border: none;
+  color: #bdb8b8;
+  cursor: pointer;
+  animation: scrollBounce 1.8s infinite;
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 300ms ease;
+  will-change: opacity;
+}
+
+.scroll-indicator.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scroll-indicator-text {
+  font-size: 12px;
+  line-height: 1;
+}
+
+@keyframes scrollBounce {
+  0%, 20%, 50%, 80%, 100% { transform: translate(-50%, 0); }
+  40% { transform: translate(-50%, 6px); }
+  60% { transform: translate(-50%, 3px); }
+}
+
+/* Простые стили модалки */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  width: min(92vw, 420px);
+  color: #222;
+}
+
+.tg-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #229ED9;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.tg-button:hover {
+  background: #1e8ec3;
+}
