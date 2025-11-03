@@ -58,7 +58,7 @@ class AuthController {
 
   private getUserDirPath(userId: string): { fullPath: string, relativePath: string } {
     const hashPrefix = userId.substring(0, 8).padStart(8, '0');
-    const fullPath = path.join('uploads', 'users', hashPrefix, userId);
+    const fullPath = path.join(process.cwd(), 'uploads', 'users', hashPrefix, userId);
     const relativePath = path.join('users', hashPrefix, userId);
     return { fullPath, relativePath };
   }
