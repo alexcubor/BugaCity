@@ -412,7 +412,6 @@ const AuthPage: React.FC = () => {
             />
             <div className="logo-subtext">Проект социальной сети Глюкоград</div>
             <div className="logo-tagline">Игра, построенная вокруг реального мира.</div>
-            <div className="pilot-badge">Пилотный запуск планируется<br/>не позже 1 мая 2026 года</div>
             <button
               className="investor-slot-portrait"
               onClick={() => setShowInvestorModal(true)}

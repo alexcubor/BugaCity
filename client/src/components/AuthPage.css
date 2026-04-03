@@ -50,22 +50,12 @@
     height: 60px;
   }
 
-  /* В портретном режиме плашка в нормальном потоке в header под текстом */
-  .pilot-badge {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    margin-top: 8px;
-    width: auto;
-    text-align: center !important;
-  }
-
   /* Скрываем оригинальную кнопку инвестора в правом углу */
   .investor-slot {
     display: none !important;
   }
 
-  /* Показываем кнопку инвестора в потоке под плашкой */
+  /* Показываем кнопку инвестора в потоке под текстом */
   .investor-slot-portrait {
     display: block !important;
     position: static !important;
@@ -97,21 +87,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* Плашка пилотного запуска - в альбомном режиме в левом верхнем углу экрана */
-.pilot-badge {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.78);
-  font-size: 12px;
-  line-height: 1.2;
-  backdrop-filter: blur(2px);
-  z-index: 20;
-  text-align: left;
 }
 
 /* Слот меню для инвесторов (верхний правый угол) - альбомный режим */
