@@ -25,11 +25,14 @@ services:
     ports:
       - "${MONGODB_PORT:-}:27017"  # Проброс порта только в dev режиме
 
-  # Application
+  # Application (системный nginx на хосте проксирует на 127.0.0.1:3001)
   app:
     image: bugacity:latest
     ports:
-      - "${APP_PORT:-}:3001"  # Проброс порта только в dev режиме
+      - target: 3001
+        published: 3001
+        protocol: tcp
+        mode: host
     deploy:
       replicas: 1
       restart_policy:
@@ -65,35 +68,6 @@ services:
       - network
     volumes:
       - uploads_data:/app/uploads
-
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 0
-        window: 120s
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - MAINTENANCE_MODE=${MAINTENANCE_MODE:-false}
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      # Отдельный каталог: нельзя монтировать файл поверх уже смонтированного conf.d (Swarm/Docker)
-      - /var/www/greatflood.quest/nginx/site.conf:/etc/nginx/project.d/greatflood.quest.conf:ro
-      - /var/www/gornar-quiz.ru/nginx/site.conf:/etc/nginx/project.d/gornar-quiz.ru.conf:ro
-      - /var/www/gornar-quiz.ru:/var/www/gornar-quiz:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - app
-    networks:
-      - network
 
 volumes:
   mongo_prod_data:
